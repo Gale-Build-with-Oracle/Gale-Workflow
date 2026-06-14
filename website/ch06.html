@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="กายวิภาคของ skill, profiles, การ routing และการเขียน skill เอง — Skills System ใน Gale Workflow">
+  <title>Skills System | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html" class="active" aria-current="page"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 06</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>Skills System</h1>
+          <p class="chapter-lead">กายวิภาคของ skill, profiles, การ routing และการเขียน skill เอง</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">6.1 Skill คืออะไร</h2>
+
+          <p>
+            Skill คือ "โปรแกรมเสริม" ที่ agent โหลดเมื่อต้องการความสามารถพิเศษ แทนที่จะฝัง instruction ทุกอย่างลงใน system prompt เดียว
+            skills ถูกแบ่งออกเป็นโมดูลย่อย ๆ ที่โหลดตามความต้องการ
+          </p>
+          <p>
+            แต่ละ skill มีสามส่วนหลัก: <strong>slash command</strong> (ชื่อที่ใช้เรียก เช่น <code>/debug-mantra</code>),
+            <strong>ความสามารถเฉพาะทาง</strong> (วิธีทำที่ถูกต้อง, ขั้นตอน, checklist), และ
+            <strong>ความรู้โดเมน</strong> (context เฉพาะที่ agent ต้องการสำหรับงานนั้น)
+          </p>
+          <p>
+            การแยก skill ออกจาก core prompt ทำให้ระบบ <em>composable</em> — agent ตัวเดียวสามารถทำงานได้หลายโดเมน
+            โดยโหลดเฉพาะ skill ที่ต้องการ แทนที่จะต้องมี agent พิเศษสำหรับแต่ละงาน
+          </p>
+
+          <h2 id="section-2">6.2 Skill File Anatomy: โครงสร้างของไฟล์ Skill</h2>
+
+          <p>
+            skill ไฟล์หนึ่งแบ่งเป็นสองส่วน: <strong>frontmatter</strong> (YAML metadata) และ <strong>body</strong> (Markdown content)
+            frontmatter บอก skill system ว่า skill นี้ชื่ออะไร, ทำอะไรได้, และควร trigger เมื่อไหร่
+            body คือเนื้อหาที่ inject เข้าไปใน context เมื่อ skill ถูกเรียก
+          </p>
+
+          <pre><code>---
+name: debug-mantra
+description: |
+  Four-mantra debugging discipline. Recite the mantra block verbatim at the
+  start of any debugging session, then apply the four steps in order before
+  proposing any fix. Trigger on /debug-mantra and proactively whenever
+  debugging starts — user reports a bug, says something is broken/failing,
+  asks to debug/diagnose/investigate, or pastes a stack trace or error log.
+version: "1.0.0"
+tier: standard
+triggers:
+  - /debug-mantra
+  - bug report
+  - stack trace
+  - error log
+  - "something is broken"
+  - "fails with"
+  - investigate issue
+do_not_trigger:
+  - general code review (use /code-review)
+  - performance optimization without error
+---
+
+## Debug Mantra — สี่ขั้นตอน
+
+ท่อง mantra ก่อนเสมอ:
+1. **Reproduce** — ทำให้ bug เกิดขึ้นซ้ำได้ก่อนแก้
+2. **Trace the fail path** — ติดตาม code path จาก input ถึง error
+3. **Falsify hypothesis** — พิสูจน์ว่า hypothesis ผิดก่อนเชื่อ
+4. **Cross-reference breadcrumbs** — ตรวจสอบ log, commit, PR ที่เกี่ยวข้อง
+
+...body เนื้อหาเพิ่มเติม...
+</code></pre>
+
+          <p>
+            field <code>description</code> มีความสำคัญมากที่สุด — มันเป็นสิ่งที่ agent อ่านเพื่อตัดสินใจว่าจะโหลด skill นี้หรือไม่
+            description ที่ดีต้องบอกชัดว่า "เมื่อไหร่ trigger" และ "เมื่อไหร่ไม่ trigger" ไม่ใช่แค่บอกว่า skill ทำอะไร
+          </p>
+
+          <h2 id="section-3">6.3 Profiles &amp; Tiers: core / standard / extra</h2>
+
+          <p>
+            skills แบ่งเป็น 3 tier ตามความสำคัญและความถี่ในการใช้งาน
+            การแบ่ง tier ช่วยให้ agent ไม่โหลด skill ที่ไม่จำเป็นทุกครั้ง ซึ่งประหยัด context window
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>โหลดเมื่อ</th>
+                <th>ตัวอย่าง</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>core</strong></td>
+                <td>ทุก session โดยอัตโนมัติ — skills พื้นฐานที่ขาดไม่ได้</td>
+                <td><code>/recap</code>, <code>/forward</code>, <code>/rrr</code></td>
+              </tr>
+              <tr>
+                <td><strong>standard</strong></td>
+                <td>โหลดตาม trigger word หรือ slash command — ใช้บ่อยแต่ไม่ทุก session</td>
+                <td><code>/debug-mantra</code>, <code>/scrutinize</code>, <code>/sop-maw</code></td>
+              </tr>
+              <tr>
+                <td><strong>extra</strong></td>
+                <td>โหลดเฉพาะเมื่อ context ชัดเจน — specialized หรือ domain-specific</td>
+                <td><code>/financial</code>, <code>/nwf-sql</code>, <code>/sl-theme</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            arra-oracle-skills-cli จัดการการติดตั้ง skill ลง directory ของ agent แต่ละตัว
+            คำสั่งหลักคือ <code>oracle-skills install --profile standard</code> สำหรับติดตั้ง standard tier ทั้งหมด
+            และ <code>oracle-skills update</code> สำหรับ sync กับ registry เมื่อมี version ใหม่
+          </p>
+
+          <h2 id="section-4">6.4 Routing: Description เป็นตัวกระตุ้น</h2>
+
+          <p>
+            กลไก routing ของ skills ไม่ได้ใช้ keyword matching แบบ hard-code แต่ใช้ agent อ่าน <code>description</code>
+            ของ skill ทุกตัวที่ available แล้วตัดสินใจว่าจะโหลดตัวไหน ดังนั้น description ที่ดีคือ routing ที่ดี
+          </p>
+          <p>
+            trigger words ใน frontmatter ช่วย hint agent ว่าควรพิจารณา skill นี้เมื่อเจอ phrase ที่ระบุ
+            แต่การตัดสินใจสุดท้ายยังอยู่ที่ agent ทำให้ระบบ flexible — agent สามารถ <em>เลือกไม่</em> trigger skill
+            ถ้า context บอกว่าไม่เหมาะสม
+          </p>
+
+          <blockquote>
+            <strong>ตัวอย่าง routing ที่ดี:</strong> skill <code>/scrutinize</code> มี description ว่า
+            "Outsider-perspective review of a plan, PR, or code change — questions intent and traces the actual code path"
+            พร้อม trigger "review, audit, sanity-check, second opinion" และ do-not-trigger "general chat, musing"
+            ทำให้ agent รู้ว่าต้องโหลดเมื่อไหร่และไม่ควรโหลดเมื่อไหร่
+          </blockquote>
+
+          <p>
+            หลักสำคัญในการเขียน routing คือ <strong>asymmetry</strong> — "when to use" และ "when NOT to use"
+            ต้องมีทั้งคู่ skills ที่ขาด "do not trigger" มักถูก trigger ผิดที่และทำให้ context ยาวโดยไม่จำเป็น
+          </p>
+
+          <h2 id="section-5">6.5 SOP Skills: แผนที่ Phase ถึง Skill</h2>
+
+          <p>
+            Gale Workflow กำหนด SOP skills ที่ต้องโหลดในแต่ละ phase ของ development lifecycle
+            การโหลด SOP ถูกต้องคือความแตกต่างระหว่างงานที่ไปถูกทิศกับงานที่ต้องทำซ้ำ
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Phase / สถานการณ์</th>
+                <th>Skill ที่ต้องโหลด</th>
+                <th>เมื่อไหร่</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>worktree, team spawn, PR, done</td><td><code>/sop-maw</code></td><td>ทุกครั้งที่ใช้คำสั่ง maw</td></tr>
+              <tr><td>รับ task จาก human / CR intake</td><td><code>/sop-delegation</code></td><td>ก่อนสร้าง issue / dispatch งาน</td></tr>
+              <tr><td>Frontend UI</td><td><code>/sop-frontend</code></td><td>ก่อนแตะ HTML/CSS/component</td></tr>
+              <tr><td>Backend / API</td><td><code>/sop-backend</code></td><td>ก่อนแตะ server code</td></tr>
+              <tr><td>Database / SQL</td><td><code>/your-db-mcp</code> (custom)</td><td>ก่อนอ่าน schema หรือ query</td></tr>
+              <tr><td>Project docs (7-doc)</td><td><code>/sop-cmmi</code></td><td>ก่อนเขียน/อัปเดต docs</td></tr>
+              <tr><td>Quality audit (หลัง build, ก่อน PR)</td><td><code>/sop-qa</code></td><td>ทุก PR บน product repo</td></tr>
+              <tr><td>Bug fix (MANDATORY ก่อนแก้)</td><td><code>/debug-mantra</code></td><td>เมื่อมี bug report หรือ error</td></tr>
+              <tr><td>PR review (ก่อน merge)</td><td><code>/scrutinize</code></td><td>L1 ทุกครั้งก่อน merge</td></tr>
+              <tr><td>หลัง bug fix (MANDATORY)</td><td><code>/post-mortem</code></td><td>หลัง fix landed ก่อนปิด ticket</td></tr>
+              <tr><td>สื่อสารกับ management</td><td><code>/management-talk</code></td><td>เมื่อต้องเขียน exec update</td></tr>
+              <tr><td>สรุป session</td><td><code>/rrr</code></td><td>ท้าย session ที่มี notable work</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            หลักการคือ "โหลด SOP ก่อนทำงานในแต่ละ phase" ไม่ใช่หลังจากทำแล้วแล้วค่อยตรวจ
+            เหมือนกับการอ่านคู่มือก่อนประกอบอุปกรณ์ ไม่ใช่อ่านหลังจากประกอบไปแล้วครึ่งทาง
+          </p>
+
+          <h2 id="section-6">6.6 เขียน Custom Skill: skill-creator และการทดสอบ</h2>
+
+          <p>
+            การเขียน skill ใหม่ทำผ่าน skill <code>/skill-creator</code> ซึ่งแนะนำ workflow การสร้าง, ทดสอบ, และ eval skill
+            โครงสร้างไฟล์มาตรฐานคือ <code>.claude/skills/&lt;skill-name&gt;.md</code> สำหรับ user-level skill
+            หรือ <code>&lt;repo&gt;/.claude/skills/&lt;skill-name&gt;.md</code> สำหรับ project-level skill
+          </p>
+
+          <pre><code># สร้าง custom skill สำหรับ project
+mkdir -p my-product/.claude/skills
+
+cat &gt; my-product/.claude/skills/my-deploy.md &lt;&lt; 'EOF'
+---
+name: my-deploy
+description: |
+  Deploy YourProject to staging or production via Docker Compose.
+  Use when user says "deploy", "push to staging", "release", or asks to
+  restart any service. Do NOT use for local dev setup or database migrations.
+version: "1.0.0"
+tier: standard
+triggers:
+  - /my-deploy
+  - deploy to staging
+  - release to production
+  - restart service
+do_not_trigger:
+  - local development setup
+  - database migration
+---
+
+## Deploy Checklist
+
+1. ตรวจ branch เป็น main และ CI ผ่าน
+2. รัน `/sop-qa` ก่อน deploy
+3. `docker compose build --no-cache`
+4. `docker compose up -d`
+5. `docker compose ps` — ตรวจทุก service เป็น running
+6. Smoke test endpoint หลัก
+
+...
+EOF
+</code></pre>
+
+          <p>
+            หลังเขียน skill แล้ว ทดสอบ trigger โดยเริ่ม session ใหม่และพูดถึง trigger phrase
+            ถ้า skill โหลดถูก จะเห็น skill content ใน context
+            ถ้าไม่โหลด ให้ตรวจ <code>description</code> ว่า trigger phrase ชัดพอไหม
+          </p>
+          <p>
+            การทำ eval อย่างเป็นระบบใช้ <code>/skill-creator</code> ที่มี benchmark mode — มันทดสอบ skill กับ prompt หลาย ๆ แบบ
+            แล้ว report ว่า trigger ถูกกี่เปอร์เซ็นต์และไม่ trigger ผิดกี่ครั้ง
+          </p>
+
+          <h2 id="section-7">6.7 Skills ทำให้ Workflow ไม่ผูกกับ Agent ตัวเดียว</h2>
+
+          <p>
+            ข้อดีเชิงสถาปัตยกรรมที่สำคัญที่สุดของ Skills System คือ <strong>engine independence</strong>
+            workflow และ procedure ทั้งหมดอยู่ใน skill files ไม่ใช่ใน agent ตัวใดตัวหนึ่ง
+            ดังนั้นถ้าเปลี่ยนจาก Claude เป็น Codex หรือ engine ใหม่ที่เกิดขึ้นในอนาคต skill ก็ยังทำงานได้
+          </p>
+          <p>
+            fleet สามารถใช้ Claude วันนี้และ Codex พรุ่งนี้ได้โดยไม่ต้องเขียน SOP ใหม่
+            เพราะ skill files เป็น Markdown ที่ engine ใดก็อ่านได้ ไม่มีความผูกพันกับ provider
+          </p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart LR
+              U([User: พูดถึง trigger]) --&gt; A[Agent อ่าน description\nของ skills ที่ available]
+              A --&gt; B{มี skill ที่ match?}
+              B -- ไม่มี --&gt; C[ตอบจาก core knowledge\nไม่โหลด skill เพิ่ม]
+              B -- มี --&gt; D[โหลด skill body\nเข้า context]
+              D --&gt; E{tier ของ skill}
+              E -- core --&gt; F[โหลดทุก session อัตโนมัติ]
+              E -- standard --&gt; G[โหลดตาม trigger]
+              E -- extra --&gt; H[โหลดเฉพาะ context ชัดเจน]
+              F --&gt; I([Execute ด้วย skill context])
+              G --&gt; I
+              H --&gt; I</div>
+            <figcaption><strong>ภาพที่ 6.1: Skill Routing Flow</strong><span>Agent ใช้ description เป็น routing signal ไม่ใช่ keyword match แบบ hard-code</span></figcaption>
+          </figure>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ข้อดี</th>
+                <th>รายละเอียด</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Engine independent</td><td>เปลี่ยน engine ได้โดยไม่เขียน SOP ใหม่</td></tr>
+              <tr><td>Composable</td><td>โหลดเฉพาะ skill ที่ต้องการ ประหยัด context</td></tr>
+              <tr><td>Versionable</td><td>skill มี version ใน frontmatter, update ผ่าน CLI</td></tr>
+              <tr><td>Testable</td><td>eval trigger accuracy ด้วย skill-creator benchmark mode</td></tr>
+              <tr><td>Shareable</td><td>skill สาธารณะแชร์ผ่าน maw-plugin-registry</td></tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-8">สรุปบทที่ 06</h2>
+
+          <p>
+            Skills System คือกลไกที่ทำให้ workflow รู้สึกเหมือน "ระบบที่มีความสามารถเพิ่มขึ้นตามเวลา"
+            แทนที่จะเป็น agent ที่รู้ทุกอย่างตั้งแต่ต้น ด้วยการโหลด skill เฉพาะเมื่อต้องการ
+            ระบบประหยัด context window และลดโอกาสที่ knowledge จาก domain หนึ่งจะรบกวน domain อื่น
+          </p>
+          <p>
+            กุญแจสำคัญของ skill ที่ดีคือ <code>description</code> ที่บอก agent ทั้ง "เมื่อไหร่ควร trigger" และ "เมื่อไหร่ไม่ควร trigger"
+            โดยเฉพาะส่วน do-not-trigger ซึ่งมักถูกมองข้ามแต่ป้องกัน false positive ได้มาก
+          </p>
+          <p>
+            ข้อดีเชิงสถาปัตยกรรมที่สำคัญคือ engine independence — workflow อยู่ใน skill files ไม่ใช่ใน agent
+            ทำให้ fleet สามารถเปลี่ยน engine ได้โดยไม่เสีย procedure ที่สร้างมา
+            บทถัดไปจะเจาะลึก maw-js Commands ซึ่งเป็น interface หลักสำหรับควบคุม tmux และ agents
+          </p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch05.html">← Oracle Brain</a>
+          <a class="button primary" href="ch07.html">maw-js Commands →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

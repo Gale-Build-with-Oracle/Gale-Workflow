@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="arra-oracle-v3 — Oracle Brain สำหรับ search, learn, trace, handoff ผ่าน MCP และ FTS index พร้อม hybrid semantic search ด้วย bge-m3">
+  <title>Oracle Brain | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html" class="active" aria-current="page"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 05</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>Oracle Brain</h1>
+          <p class="chapter-lead">arra-oracle-v3 — search, learn, trace, handoff ผ่าน MCP และ FTS index</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">5.1 arra-oracle-v3 ภาพรวม</h2>
+
+          <p>
+            arra-oracle-v3 คือ "สมองถาวร" ของ Gale Workflow ทำหน้าที่เก็บและค้นหาความรู้ที่สะสมจาก session ต่าง ๆ
+            แม้ว่า agent จะเป็น ephemeral (เกิด-ตายตาม task) แต่ Oracle Brain ยังคงทำงานอยู่ตลอดเวลาในฐานะ background service
+          </p>
+          <p>
+            ระบบประกอบด้วย 4 ส่วนหลัก: MCP server (สำหรับ agent คุย), HTTP API (สำหรับ UI/service คุย),
+            indexer ที่จัดการ FTS5 + vector database, และ vault CLI สำหรับ admin งาน เช่น reindex หรือ export
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Component</th>
+                <th>Protocol</th>
+                <th>Port/Path</th>
+                <th>ใครใช้</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>MCP Server</td><td>stdio (JSON-RPC 2.0)</td><td>stdin/stdout ของ process</td><td>Claude Code, Codex/OMX agents</td></tr>
+              <tr><td>HTTP API</td><td>REST/JSON</td><td><code>localhost:47778</code></td><td>maw-ui, dashboard, scripts, curl</td></tr>
+              <tr><td>Indexer</td><td>internal</td><td>SQLite + vector store</td><td>ถูกเรียกจาก MCP/API</td></tr>
+              <tr><td>Vault CLI</td><td>CLI</td><td><code>oracle &lt;cmd&gt;</code></td><td>admin — reindex, export, backup</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            arra-oracle-v3 รันเป็น background service ผ่าน pm2 (ดู phase-10 ในบทที่ 4) และจะ auto-restart เมื่อ crash
+            คุณสามารถตรวจสถานะด้วย <code>pm2 status arra-oracle</code> หรือ <code>curl localhost:47778/api/health</code>
+          </p>
+
+          <h2 id="section-2">5.2 Search: Hybrid FTS5 + Vector Semantic</h2>
+
+          <p>
+            กฎข้อแรกของ Gale Workflow คือ "Search Before Answer" — agent ทุกตัวต้อง search Oracle Brain ก่อนตอบคำถาม
+            แม้งานจะดูง่าย เพราะ knowledge base มีเอกสารและ patterns หลายพันชิ้นที่สะสมมาจากประสบการณ์จริง
+          </p>
+          <p>
+            ระบบ search ใช้วิธี hybrid สองชั้น: ชั้นแรกคือ FTS5 keyword search จาก SQLite ซึ่งเร็วและแม่นยำสำหรับคำเฉพาะ (technical terms, filenames)
+            ชั้นที่สองคือ vector semantic search จาก embedding model bge-m3 ซึ่งเข้าใจความหมายและทำงานได้ทั้งภาษาไทยและอังกฤษ
+          </p>
+          <p>
+            ผลลัพธ์จากสองชั้นจะถูก merge ด้วย RRF (Reciprocal Rank Fusion) ก่อน return
+            ถ้า vector store ล้มหรือ offline ระบบจะ fallback ไป FTS เท่านั้นโดยอัตโนมัติ โดยแสดง warning ใน response
+          </p>
+
+          <blockquote>
+            <strong>วัฒนธรรม "Search Before Answer":</strong> CLAUDE.md กำหนดไว้ชัดว่า action แรกในทุก task
+            ต้องเป็น <code>oracle_search("query")</code> ผ่าน MCP — ก่อนอ่านไฟล์, ก่อนแก้โค้ด, ก่อนตอบ
+            เพราะ knowledge base เก็บ anti-pattern และบทเรียนจากความผิดพลาดในอดีต ซึ่งป้องกันไม่ให้ทำซ้ำ
+          </blockquote>
+
+          <h2 id="section-3">5.3 Learn: บันทึก Learning และ Pattern เข้าฐานความรู้</h2>
+
+          <p>
+            <code>oracle_learn</code> คือ tool สำหรับเขียน learning หรือ pattern ใหม่เข้า knowledge base
+            ใช้เมื่อ agent ค้นพบวิธีแก้ปัญหาที่ควรจำ, พบ anti-pattern ที่ควรเตือน, หรือสรุปบทเรียนจาก debugging session
+          </p>
+          <p>
+            document ที่เขียนผ่าน <code>oracle_learn</code> จะถูก index ทั้งใน FTS5 และ vector store ทันที
+            และพร้อม search ในครั้งถัดไปโดยไม่ต้องรอ batch reindex
+            หมวดหมู่หลักคือ: <code>learning</code> (สิ่งที่เรียนรู้), <code>pattern</code> (วิธีทำที่ดี), <code>anti-pattern</code> (วิธีที่ไม่ควรทำ)
+          </p>
+
+          <pre><code>// ตัวอย่าง oracle_learn ผ่าน MCP tool call (generic)
+{
+  "tool": "oracle_learn",
+  "input": {
+    "title": "Engine map key ที่หาย fallback เงียบ ๆ ไป default",
+    "content": "เมื่อ maw team spawn --engine omx แต่ config ไม่มี key 'omx' ใน commands map\nระบบจะ fallback ไป default engine โดยไม่แสดง error\nวิธีตรวจ: maw panes แล้วดู CMD column — omx worker ควรเป็น 'node' ไม่ใช่ 'claude'",
+    "category": "anti-pattern",
+    "tags": ["engine-map", "maw", "workon", "omx"]
+  }
+}
+</code></pre>
+
+          <p>
+            ทุก oracle ควรเขียน learning หลัง debugging session สำเร็จ และหลัง <code>/post-mortem</code>
+            การสะสม learning อย่างสม่ำเสมอคือสิ่งที่ทำให้ fleet ฉลาดขึ้นเรื่อย ๆ แทนที่จะทำผิดซ้ำ
+          </p>
+
+          <h2 id="section-4">5.4 Trace: หา Project/Code/ประวัติข้าม Repo</h2>
+
+          <p>
+            <code>oracle_trace</code> ต่างจาก search ตรงที่มุ่งเน้นการ "ติดตาม" สิ่งของข้ามเวลาและข้าม repository
+            ใช้เมื่อต้องการหาว่า feature นี้อยู่ใน repo ไหน, bug นี้ fix ไว้ที่ commit อะไร, หรือ PR ไหนเกี่ยวกับ issue นั้น
+          </p>
+          <p>
+            trace ทำงานโดยรวม context จากหลายแหล่ง: Oracle knowledge base, git history (ถ้า hook บันทึกไว้),
+            GitHub issues และ PRs (ผ่าน gh CLI integration), และ ψ memory files
+            ผลลัพธ์มี source ที่ชัดเจนพร้อม link/ref สำหรับ verify
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Tool ที่ใช้</th>
+                <th>ตัวอย่าง query</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>หา project/code ตาม concept</td><td><code>oracle_trace</code></td><td>"where is the auth middleware"</td></tr>
+              <tr><td>หา session ในอดีต</td><td><code>oracle_search</code> + <code>oracle_trace</code></td><td>"what did we work on last week for YourProject"</td></tr>
+              <tr><td>หา commit/PR สำหรับ bug</td><td><code>oracle_trace</code> + <code>gh</code> CLI</td><td>"trace fix for issue #42"</td></tr>
+              <tr><td>ค้นหา pattern ทั่วไป</td><td><code>oracle_search</code></td><td>"deployment docker compose pattern"</td></tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-5">5.5 Handoff &amp; Inbox: ส่งต่อ Context ระหว่าง Session</h2>
+
+          <p>
+            เนื่องจาก agent เป็น ephemeral (session จบแล้วจบเลย) Gale Workflow จึงมีกลไก handoff เพื่อส่งต่อ context
+            ไปยัง session ถัดไปหรือ oracle อื่น handoff document บันทึกสถานะปัจจุบัน, สิ่งที่ทำไปแล้ว, และ next steps
+          </p>
+          <p>
+            <code>oracle_handoff</code> สร้าง structured handoff และเขียนลง knowledge base พร้อมกับส่งไปยัง inbox
+            ของ oracle ปลายทาง inbox ทำหน้าที่เหมือน "กล่องจดหมาย" ที่ oracle ตรวจเมื่อเริ่ม session ใหม่
+          </p>
+
+          <pre><code>// ตัวอย่าง oracle_handoff (generic)
+{
+  "tool": "oracle_handoff",
+  "input": {
+    "to": "my-oracle",
+    "subject": "Sprint-X Worker-1 งาน YourProject issue #15 ยังค้างอยู่",
+    "context": "ทำ auth middleware ไปได้ 70% แล้ว\nยังขาด refresh token logic\nBranch: feat/auth-middleware-issue-15\nNext: implement token rotation ใน src/middleware/auth.ts",
+    "priority": "high"
+  }
+}
+</code></pre>
+
+          <p>
+            oracle ตรวจ inbox ได้ผ่าน <code>oracle_inbox</code> MCP tool หรือ <code>GET /api/inbox</code>
+            ระบบ <code>/recap</code> skill จะเรียก <code>oracle_inbox</code> โดยอัตโนมัติเมื่อเริ่ม session
+            ทำให้ oracle "รู้ว่างานค้างอยู่ที่ไหน" ทันทีโดยไม่ต้องจำ
+          </p>
+
+          <h2 id="section-6">5.6 MCP Protocol: Agent คุยผ่าน MCP, UI คุยผ่าน HTTP</h2>
+
+          <p>
+            arra-oracle-v3 แยก entrypoint ออกเป็นสองแบบชัดเจนเพื่อไม่ให้ path ชนกัน
+            Agent (Claude Code, Codex) คุยผ่าน MCP stdio protocol ซึ่ง Claude Code เชื่อมต่อผ่าน <code>mcpServers</code> config
+            ส่วน UI, scripts, และ external services คุยผ่าน HTTP REST API บน port 47778
+          </p>
+
+          <pre><code>// ตัวอย่าง config สำหรับ Claude Code (.claude/claude_code_config.json หรือ settings)
+{
+  "mcpServers": {
+    "arra-oracle-v3": {
+      "command": "node",
+      "args": ["/path/to/arra-oracle-v3/dist/server.js"],
+      "env": {
+        "ORACLE_DB_PATH": "/home/user/.oracle/vault.db",
+        "ORACLE_HTTP_PORT": "47778"
+      }
+    }
+  }
+}
+
+// ตัวอย่าง HTTP API call ผ่าน curl (generic)
+curl -s -X POST http://localhost:47778/api/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "q": "engine map fallback",
+    "limit": 5,
+    "mode": "hybrid"
+  }' | jq '.results[] | {title, score, category}'
+</code></pre>
+
+          <p>
+            MCP tool names ใน arra-oracle-v3 ใช้ prefix <code>oracle_</code> เสมอ เช่น
+            <code>oracle_search</code>, <code>oracle_learn</code>, <code>oracle_trace</code>, <code>oracle_handoff</code>, <code>oracle_inbox</code>
+            ทำให้ agent รู้ได้ชัดว่า tool ไหนมาจาก Oracle Brain และ tool ไหนมาจาก MCP server อื่น
+          </p>
+
+          <h2 id="section-7">5.7 FTS Index + Embeddings: bge-m3 Multilingual</h2>
+
+          <p>
+            ส่วน vector ของ Oracle Brain ใช้ model <strong>bge-m3</strong> จาก BAAI ซึ่งเป็น multilingual embedding model
+            รองรับภาษาไทยและอังกฤษในโมเดลเดียว ทำให้ค้นหาด้วย query ภาษาไทยแล้วเจอเอกสารภาษาอังกฤษได้ (cross-lingual)
+            และในทางกลับกัน
+          </p>
+          <p>
+            embedding ถูก generate เมื่อเขียน document ใหม่ผ่าน <code>oracle_learn</code> และ vector ถูกเก็บในตาราง SQLite
+            ที่ใช้ extension vector search (เช่น sqlite-vec หรือ custom implementation)
+            batch reindex ทำผ่าน <code>oracle reindex --batch-size 50</code> จาก vault CLI
+          </p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TB
+              Q([Query จาก Agent]) --&gt; FTS[FTS5 keyword search\nSQLite]
+              Q --&gt; EMB[Embed query\nbge-m3 model]
+              EMB --&gt; VEC[Vector similarity search\nsqlite-vec]
+              FTS --&gt; RRF[RRF Merge\nReciprocal Rank Fusion]
+              VEC --&gt; RRF
+              RRF --&gt; RES([Results พร้อม score])
+              VEC -. ถ้า vector offline .--&gt; FALL[Fallback: FTS only\n+ warning ใน response]
+              FALL --&gt; RES</div>
+            <figcaption><strong>ภาพที่ 5.1: Hybrid Search Flow ใน arra-oracle-v3</strong><span>FTS5 + vector semantic merge ด้วย RRF; fallback อัตโนมัติเมื่อ vector ล้ม</span></figcaption>
+          </figure>
+
+          <table>
+            <thead>
+              <tr>
+                <th>MCP Tool</th>
+                <th>HTTP Endpoint</th>
+                <th>หน้าที่</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>oracle_search</code></td><td>POST /api/search</td><td>Hybrid search ใน knowledge base</td></tr>
+              <tr><td><code>oracle_learn</code></td><td>POST /api/learn</td><td>เขียน learning/pattern ใหม่</td></tr>
+              <tr><td><code>oracle_trace</code></td><td>POST /api/trace</td><td>ติดตาม project/code/ประวัติ</td></tr>
+              <tr><td><code>oracle_handoff</code></td><td>POST /api/handoff</td><td>สร้าง handoff document + ส่ง inbox</td></tr>
+              <tr><td><code>oracle_inbox</code></td><td>GET /api/inbox</td><td>อ่าน inbox ของ oracle นี้</td></tr>
+              <tr><td><code>oracle_read</code></td><td>GET /api/docs/:id</td><td>อ่าน document เต็มด้วย ID</td></tr>
+              <tr><td><code>oracle_reflect</code></td><td>POST /api/reflect</td><td>สรุป session + auto-learn</td></tr>
+              <tr><td><code>oracle_thread</code></td><td>POST /api/threads</td><td>สร้าง conversation thread</td></tr>
+              <tr><td><code>oracle_stats</code></td><td>GET /api/stats</td><td>สถิติ knowledge base</td></tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-8">สรุปบทที่ 05</h2>
+
+          <p>
+            arra-oracle-v3 เป็นชั้น memory ถาวรที่ทำให้ Gale Workflow ฉลาดขึ้นตามเวลา แม้ agent จะเป็น ephemeral
+            การ search ก่อนทำงานทุกครั้งคือกฎ (ไม่ใช่แนะนำ) เพราะ knowledge base เก็บบทเรียนที่สะสมมาจากความผิดพลาดจริง
+          </p>
+          <p>
+            Hybrid search ผสม FTS5 keyword กับ vector semantic ของ bge-m3 ทำให้ query ภาษาไทยเจอเอกสาร
+            ทั้งไทยและอังกฤษได้ RRF merge ทำให้ได้ผลลัพธ์ที่ดีกว่าทั้งสองวิธีแยก และ fallback อัตโนมัติเมื่อ vector ล้ม
+            ทำให้ระบบยังใช้งานได้แม้ component บางส่วนมีปัญหา
+          </p>
+          <p>
+            handoff และ inbox ช่วยส่งต่อ context ข้าม session และข้าม oracle ทำให้ fleet ทำงานเป็น continuous memory
+            แทนที่จะเป็น isolated sessions บทถัดไปจะอธิบาย Skills System ที่ทำให้ workflow ไม่ผูกกับ agent ตัวใดตัวหนึ่ง
+          </p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch04.html">← ติดตั้งจาก 0</a>
+          <a class="button primary" href="ch06.html">Skills System →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ติดตั้ง Gale Workflow ข้ามแพลตฟอร์ม WSL2/Linux/macOS ด้วย setup.sh และ Gale-Framework — prerequisites, upstream forks, และ verify checklist">
+  <title>ติดตั้งจาก 0 | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html" class="active" aria-current="page"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 04</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>ติดตั้งจาก 0</h1>
+          <p class="chapter-lead">ติดตั้งระบบข้ามแพลตฟอร์ม WSL2/Linux/macOS ด้วย setup.sh และ Gale-Framework</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">4.1 Prerequisites: เครื่องมือที่ต้องมีก่อน</h2>
+
+          <p>
+            Gale Workflow ทำงานบน layer ของเครื่องมือ command-line มาตรฐาน ก่อนรัน setup.sh คุณต้องมีโปรแกรมต่อไปนี้พร้อมใช้งานทุกตัว
+            ทีมแนะนำให้ตรวจสอบด้วยคำสั่ง <code>which &lt;tool&gt;</code> หรือ <code>&lt;tool&gt; --version</code> ก่อนเริ่ม
+          </p>
+          <p>
+            เครื่องมือส่วนใหญ่ติดตั้งผ่าน package manager ของ OS ได้โดยตรง เช่น <code>apt</code> บน Debian/Ubuntu,
+            <code>brew</code> บน macOS หรือ <code>winget</code>/<code>scoop</code> บน Windows ก่อนเข้า WSL2
+            maw-js เองต้องการ Node.js ≥ 20 และสามารถเลือกใช้ Bun แทนได้
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>เครื่องมือ</th>
+                <th>เวอร์ชันขั้นต่ำ</th>
+                <th>หน้าที่หลัก</th>
+                <th>ติดตั้ง</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>git</code></td><td>2.38+</td><td>clone, worktree, hook</td><td>package manager / Xcode CLT</td></tr>
+              <tr><td><code>node</code></td><td>20 LTS+</td><td>runtime ของ maw-js</td><td>nvm, fnm, brew</td></tr>
+              <tr><td><code>bun</code> (optional)</td><td>1.1+</td><td>เร็วกว่า npm สำหรับ install</td><td><code>curl -fsSL https://bun.sh/install | bash</code></td></tr>
+              <tr><td><code>gh</code></td><td>2.40+</td><td>GitHub CLI — issue, PR, release</td><td><code>brew install gh</code> / apt</td></tr>
+              <tr><td><code>tmux</code></td><td>3.3+</td><td>pane/window management</td><td>package manager</td></tr>
+              <tr><td><code>jq</code></td><td>1.6+</td><td>parse JSON ใน script</td><td>package manager</td></tr>
+              <tr><td><code>claude</code> CLI</td><td>latest</td><td>Claude Code agent</td><td><code>npm i -g @anthropic-ai/claude-code</code></td></tr>
+              <tr><td><code>codex</code> / omx (optional)</td><td>latest</td><td>L3 OMX worker engine</td><td>ตาม engine ที่เลือก</td></tr>
+            </tbody>
+          </table>
+
+          <blockquote>
+            <strong>หมายเหตุ WSL2:</strong> ถ้าใช้ Windows ให้ติดตั้ง WSL2 (Ubuntu 22.04 แนะนำ) ก่อน จากนั้นทุกขั้นตอนรันใน WSL terminal
+            ห้ามรัน setup.sh จาก PowerShell หรือ CMD โดยตรง
+          </blockquote>
+
+          <h2 id="section-2">4.2 OS Detection: ความต่างระหว่าง WSL2, Linux, และ macOS</h2>
+
+          <p>
+            setup.sh ตรวจจับ OS โดยอัตโนมัติและปรับพฤติกรรมให้เหมาะสม ความแตกต่างหลักอยู่ที่ clipboard integration,
+            path ของ config directory, และวิธีจัดการ background process
+          </p>
+          <p>
+            บน macOS clipboard ใช้ <code>pbcopy</code>/<code>pbpaste</code> โดยตรง ส่วน WSL2 ต้องผ่าน
+            <code>clip.exe</code> หรือ <code>wl-copy</code> ขึ้นอยู่กับ environment ที่ตั้งค่าไว้
+            Linux native ใช้ <code>xclip</code> หรือ <code>xsel</code> ถ้ามี X11/Wayland
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ลักษณะ</th>
+                <th>WSL2 (Ubuntu)</th>
+                <th>Linux Native</th>
+                <th>macOS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Config dir</td><td><code>~/.claude</code></td><td><code>~/.claude</code></td><td><code>~/.claude</code></td></tr>
+              <tr><td>Clipboard</td><td>clip.exe / wl-copy</td><td>xclip / xsel</td><td>pbcopy / pbpaste</td></tr>
+              <tr><td>Background process</td><td>pm2 (systemd ไม่มี)</td><td>pm2 หรือ systemd</td><td>pm2 หรือ launchd</td></tr>
+              <tr><td>tmux socket</td><td><code>/tmp/tmux-*</code></td><td><code>/tmp/tmux-*</code></td><td><code>/private/tmp/tmux-*</code></td></tr>
+              <tr><td>PATH ที่ต้องเพิ่ม</td><td><code>~/.local/bin</code>, Windows interop</td><td><code>~/.local/bin</code></td><td><code>/usr/local/bin</code>, Homebrew</td></tr>
+              <tr><td>Symlink behavior</td><td>ปกติ (ใน WSL fs)</td><td>ปกติ</td><td>ปกติ</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            setup.sh ใช้ตรรกะตรวจจับด้วย <code>uname -s</code> และ <code>/proc/version</code>:
+            ถ้า <code>/proc/version</code> มีคำว่า "microsoft" หรือ "WSL" ระบบถือว่าเป็น WSL2
+            แล้วเลือก clipboard command และ pm2 config ที่เหมาะสมโดยอัตโนมัติ
+          </p>
+
+          <h2 id="section-3">4.3 Gale-Framework: Clone และรัน setup</h2>
+
+          <p>
+            Gale-Framework คือ repository สาธารณะที่รวม setup.sh, scripts, templates, และ doctrine fragments ทั้งหมดไว้ด้วยกัน
+            เป็นจุดเริ่มต้นหลักสำหรับการติดตั้ง Gale Workflow บนเครื่องใหม่
+          </p>
+
+          <p>
+            repository อยู่ที่ <a href="https://github.com/Gale-Build-with-Oracle/Gale-Framework" target="_blank" rel="noopener">https://github.com/Gale-Build-with-Oracle/Gale-Framework</a>
+            คุณสามารถ clone ได้โดยตรงหรือ fork ก่อนถ้าต้องการปรับแต่งสำหรับ fleet ของตัวเอง
+          </p>
+
+          <pre><code># clone Gale-Framework
+git clone https://github.com/Gale-Build-with-Oracle/Gale-Framework.git ~/ghq/github.com/Gale-Build-with-Oracle/Gale-Framework
+
+# เข้าไปในโฟลเดอร์
+cd ~/ghq/github.com/Gale-Build-with-Oracle/Gale-Framework
+
+# ดูโครงสร้าง
+ls scripts/
+# setup.sh  fleet-sync.sh  init-project-docs.sh  ...
+
+# รัน setup (อ่าน --help ก่อน)
+bash scripts/setup.sh --help
+
+# ติดตั้งจริง (interactive — ถามยืนยันแต่ละ phase)
+bash scripts/setup.sh
+</code></pre>
+
+          <p>
+            setup.sh จะถาม GitHub username, ชื่อ oracle ที่ต้องการตั้ง, และ engine ที่ใช้ (claude/omx/codex)
+            ก่อน phase แรกเริ่มทำงาน ตัวเลือกเหล่านี้จะถูกบันทึกลง <code>~/.maw/config.json</code> สำหรับใช้ครั้งต่อไป
+          </p>
+
+          <h2 id="section-4">4.4 setup.sh Phases: ขั้นตอนทั้ง 12 ของการติดตั้ง</h2>
+
+          <p>
+            setup.sh แบ่งการทำงานออกเป็น 12 phase ที่เรียงลำดับและขึ้นต่อกัน แต่ละ phase จะ print log พร้อม prefix
+            เช่น <code>[phase-0]</code>, <code>[phase-1]</code> เพื่อให้ติดตามได้ง่ายเมื่อเกิดปัญหา
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Phase</th>
+                <th>ชื่อ</th>
+                <th>สิ่งที่ทำ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>0</td><td>OS Detection</td><td>ระบุ OS (WSL2/Linux/macOS), ตั้ง env vars สำหรับ phase ถัดไป</td></tr>
+              <tr><td>1</td><td>Preflight Check</td><td>ตรวจ prerequisites ทุกตัว, abort พร้อมคำแนะนำถ้าขาด</td></tr>
+              <tr><td>2</td><td>List Upstream Repos</td><td>แสดงรายการ Soul-Brews-Studio repos ที่ต้อง fork, ถาม GitHub username</td></tr>
+              <tr><td>3</td><td>Clone/Verify Forks</td><td>fork ผ่าน <code>gh repo fork</code> แล้ว clone ลง <code>~/ghq/</code></td></tr>
+              <tr><td>4</td><td>Install maw-js</td><td><code>npm install -g</code> หรือ symlink จาก fork, ตรวจ <code>maw --version</code></td></tr>
+              <tr><td>5</td><td>Symlink Claude Config</td><td>สร้าง <code>~/.claude/CLAUDE.md</code> symlink จาก rendered doctrine</td></tr>
+              <tr><td>6</td><td>Symlink Codex Config</td><td>สร้าง <code>~/.codex/AGENTS.md</code> symlink สำหรับ Codex engine</td></tr>
+              <tr><td>7</td><td>Inject Doctrine</td><td>รัน fleet-sync.sh ครั้งแรก — render core.md + claude.md → CLAUDE.md</td></tr>
+              <tr><td>8</td><td>maw Config + tmux.conf</td><td>สร้าง <code>~/.maw/config.json</code> พร้อม engine map, copy <code>tmux.conf</code></td></tr>
+              <tr><td>9</td><td>Seed Fleet Roster</td><td>เขียน oracle identity ลง fleet registry ไฟล์แรก</td></tr>
+              <tr><td>10</td><td>pm2 Setup</td><td>ลงทะเบียน arra-oracle-v3 ใน pm2, <code>pm2 save</code>, ตั้ง startup script</td></tr>
+              <tr><td>11</td><td>Verify</td><td>รัน smoke test: <code>maw --version</code>, <code>maw panes</code>, ping Oracle MCP</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            ถ้า phase ใดล้มเหลว setup.sh จะหยุดทันทีและแสดงข้อความ error พร้อมคำสั่งที่ต้องรันเพื่อแก้ไข
+            คุณสามารถรัน setup.sh ซ้ำได้อย่างปลอดภัย — แต่ละ phase ตรวจสอบก่อนว่าทำแล้วหรือยัง (idempotent)
+          </p>
+
+          <h2 id="section-5">4.5 Upstream Repos ที่ต้อง Fork</h2>
+
+          <p>
+            Gale Workflow ขึ้นอยู่กับ 6 repositories จาก Soul-Brews-Studio organization คุณต้อง fork ทั้งหมดลงใน GitHub account ของตัวเองก่อน
+            เพราะ setup.sh จะ clone จาก fork ของคุณ (ไม่ใช่ upstream โดยตรง) เพื่อให้คุณ push custom changes ได้
+          </p>
+          <p>
+            upstream ของ Soul-Brews-Studio เป็น read-only สำหรับผู้ใช้ทั่วไป การ push ไปยัง upstream จะถูกบล็อกโดย git hook
+            workflow ที่ถูกต้องคือ: แก้ไขใน fork → upstream pull request เมื่อพร้อม
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Repository</th>
+                <th>หน้าที่หลัก</th>
+                <th>สิ่งที่คุณแก้ไขได้</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>Soul-Brews-Studio/maw-js</code></td>
+                <td>CLI หลักสำหรับ tmux/agents — คำสั่ง maw ทุกตัว</td>
+                <td>engine map, custom commands, config defaults</td>
+              </tr>
+              <tr>
+                <td><code>Soul-Brews-Studio/arra-oracle-v3</code></td>
+                <td>Oracle Brain — MCP server + HTTP API + FTS/vector index</td>
+                <td>custom tools, indexer settings, vault schema</td>
+              </tr>
+              <tr>
+                <td><code>Soul-Brews-Studio/arra-oracle-skills-cli</code></td>
+                <td>CLI ติดตั้ง/อัปเดต skill ลง agent directories</td>
+                <td>custom skill registry, install profiles</td>
+              </tr>
+              <tr>
+                <td><code>Soul-Brews-Studio/maw-plugin-registry</code></td>
+                <td>registry ของ maw plugins ทั้งหมด</td>
+                <td>เพิ่ม private plugins สำหรับ fleet</td>
+              </tr>
+              <tr>
+                <td><code>Soul-Brews-Studio/maw-ui</code></td>
+                <td>Web UI สำหรับ monitor fleet (optional)</td>
+                <td>theme, custom dashboard panels</td>
+              </tr>
+              <tr>
+                <td><code>Soul-Brews-Studio/ui-oracle</code></td>
+                <td>Oracle-specific UI components</td>
+                <td>branding, oracle identity display</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            setup.sh ใช้ <code>gh repo fork Soul-Brews-Studio/&lt;repo&gt; --clone</code> สำหรับแต่ละ repo
+            ถ้า fork มีอยู่แล้วจะ skip การสร้างใหม่และตรวจสอบว่า remote origin ชี้ถูกต้องแทน
+          </p>
+
+          <h2 id="section-6">4.6 Verify Install: Checklist และคำสั่งทดสอบ</h2>
+
+          <p>
+            หลัง setup.sh phase-11 ผ่าน ให้รัน verify checklist ด้วยตนเองอีกครั้งเพื่อความแน่ใจ
+            โดยเฉพาะการตรวจ engine map และ MCP connection ซึ่งเป็นสาเหตุหลักของปัญหาหลังติดตั้ง
+          </p>
+
+          <pre><code># 1. ตรวจ maw version
+maw --version
+# ควรแสดง: maw-js vX.Y.Z
+
+# 2. ตรวจ panes (tmux ต้องทำงานอยู่)
+maw panes
+# แสดงรายการ panes ทั้งหมด หรือ "no active session" ถ้ายังไม่เปิด tmux
+
+# 3. ตรวจ engine map ใน config
+cat ~/.maw/config.json | jq '.commands'
+# ควรมี key: "claude", "codex"/"omx" พร้อม path คำสั่ง
+
+# 4. ตรวจ Oracle MCP
+curl -s http://localhost:47778/api/health | jq
+# ควรตอบ: {"status":"ok","version":"..."}
+
+# 5. ตรวจ Claude config symlink
+ls -la ~/.claude/CLAUDE.md
+# ควรเป็น symlink ชี้ไปยัง rendered doctrine
+
+# 6. ตรวจ Codex config (ถ้าใช้)
+ls -la ~/.codex/AGENTS.md
+# ควรเป็น symlink หรือไฟล์ที่ fleet-sync.sh render แล้ว
+
+# 7. ทดสอบ gh auth
+gh auth status
+# ควรแสดง: Logged in to github.com as &lt;your-github-user&gt;
+
+# 8. ทดสอบ maw search (ผ่าน Oracle MCP)
+maw oracle search "installation test"
+# ควรตอบผลลัพธ์หรือ empty array — ไม่ควร error
+</code></pre>
+
+          <p>
+            ถ้าทุกคำสั่งผ่าน ระบบพร้อมใช้งาน ขั้นตอนถัดไปคือสร้าง tmux session ด้วย <code>maw wake</code> หรือ
+            เปิด oracle แรกด้วย <code>maw workon &lt;repo&gt; setup</code>
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Checklist Item</th>
+                <th>คำสั่งตรวจ</th>
+                <th>ผลลัพธ์ที่คาดหวัง</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>maw CLI</td><td><code>maw --version</code></td><td>version string</td></tr>
+              <tr><td>Engine map</td><td><code>cat ~/.maw/config.json | jq '.commands'</code></td><td>object มี keys claude, codex/omx</td></tr>
+              <tr><td>Oracle MCP</td><td><code>curl localhost:47778/api/health</code></td><td><code>{"status":"ok"}</code></td></tr>
+              <tr><td>Claude config</td><td><code>ls -la ~/.claude/CLAUDE.md</code></td><td>symlink หรือไฟล์ที่ render แล้ว</td></tr>
+              <tr><td>gh auth</td><td><code>gh auth status</code></td><td>Logged in as username</td></tr>
+              <tr><td>tmux</td><td><code>tmux ls</code></td><td>session list หรือ "no sessions"</td></tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-7">4.7 ปัญหาที่พบบ่อยตอนติดตั้ง</h2>
+
+          <p>
+            ปัญหาหลังติดตั้งส่วนใหญ่แบ่งเป็น 3 กลุ่ม: engine map ไม่ครบ, codex trust ยังไม่ได้ตั้ง, และ PATH ไม่รวม tools ที่ต้องการ
+            แต่ละกลุ่มมีวิธีวินิจฉัยและแก้ไขที่ชัดเจน
+          </p>
+
+          <p>
+            <strong>Engine map ผิด / key หาย:</strong> ถ้า <code>maw team spawn --engine omx</code> แล้ว worker ไม่ได้ใช้ omx engine
+            (ดูได้จาก <code>maw panes</code> ที่ CMD ไม่ใช่ <code>node</code>) ให้ตรวจ <code>commands.omx</code> ใน config
+            engine map key ที่ไม่มี → fallback เงียบ ๆ ไป default engine โดยไม่มี error
+          </p>
+
+          <p>
+            <strong>Codex trust ยังไม่ set:</strong> Codex จะถาม trust prompt เมื่อเจอ repo ที่ไม่เคย trust มาก่อน
+            Gale-Framework auto-prime trust ผ่าน <code>codex-launch</code>/<code>omx-launch</code> wrappers
+            ถ้ายังเจอ prompt ให้ตรวจว่า spawn ใช้ wrapper ถูกต้อง ไม่ใช่ binary ตรง
+          </p>
+
+          <p>
+            <strong>PATH ไม่ครบ:</strong> บน macOS Homebrew prefix อาจเป็น <code>/opt/homebrew/bin</code> (Apple Silicon) หรือ <code>/usr/local/bin</code> (Intel)
+            ให้เพิ่มทั้งคู่ลง <code>~/.zshrc</code> หรือ <code>~/.bashrc</code>
+            บน WSL2 ให้ตรวจว่า <code>~/.local/bin</code> อยู่ใน PATH และ npm global prefix ไม่ชน
+          </p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TB
+              A([เริ่ม setup.sh]) --&gt; B[Phase 0: OS Detection]
+              B --&gt; C[Phase 1: Preflight]
+              C --&gt; D{ผ่านทุก tool?}
+              D -- ไม่ผ่าน --&gt; E[แสดง error + คำแนะนำ\nabort]
+              D -- ผ่าน --&gt; F[Phase 2-3: Fork + Clone repos]
+              F --&gt; G[Phase 4: Install maw-js]
+              G --&gt; H[Phase 5-6: Symlink configs]
+              H --&gt; I[Phase 7: Inject doctrine\nfleet-sync.sh]
+              I --&gt; J[Phase 8: maw config + tmux.conf]
+              J --&gt; K[Phase 9: Seed fleet roster]
+              K --&gt; L[Phase 10: pm2 setup]
+              L --&gt; M[Phase 11: Verify smoke test]
+              M --&gt; N{ผ่าน?}
+              N -- ผ่าน --&gt; O([Setup สำเร็จ])
+              N -- ไม่ผ่าน --&gt; P[แสดง phase ที่ล้ม\nรัน setup.sh ซ้ำ]</div>
+            <figcaption><strong>ภาพที่ 4.1: setup.sh flow ทั้ง 12 phases</strong><span>แต่ละ phase idempotent — รัน setup ซ้ำได้อย่างปลอดภัย</span></figcaption>
+          </figure>
+
+          <h2 id="section-8">สรุปบทที่ 04</h2>
+
+          <p>
+            การติดตั้ง Gale Workflow เริ่มจาก prerequisites 8 ตัว, clone Gale-Framework จาก repo สาธารณะ,
+            แล้วรัน setup.sh ที่จัดการ 12 phase ให้โดยอัตโนมัติ ระบบตรวจจับ OS และปรับพฤติกรรมสำหรับ WSL2, Linux, และ macOS
+            โดยไม่ต้องแก้ไขอะไรเพิ่มเติม
+          </p>
+          <p>
+            การ fork upstream repos ทั้ง 6 จาก Soul-Brews-Studio เป็นขั้นตอนสำคัญที่ให้คุณปรับแต่ง engine map, skill registry,
+            และ UI ได้โดยไม่กระทบ upstream เมื่อพร้อมจะ contribute กลับก็ทำผ่าน pull request ปกติ
+          </p>
+          <p>
+            หลังติดตั้ง ให้รัน verify checklist 8 ข้อเพื่อยืนยันว่าทุกส่วนทำงาน ปัญหาที่พบบ่อยที่สุดคือ engine map key หาย
+            และ PATH ไม่ครบ ซึ่งทั้งคู่วินิจฉัยได้เร็วด้วยคำสั่ง <code>jq</code> และ <code>which</code>
+          </p>
+          <p>
+            บทถัดไปจะเจาะลึก Oracle Brain — arra-oracle-v3 ที่ทำหน้าที่เป็น memory, search, และ handoff ให้ระบบทั้งหมด
+          </p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch03.html">← ψ Vault</a>
+          <a class="button primary" href="ch05.html">Oracle Brain →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

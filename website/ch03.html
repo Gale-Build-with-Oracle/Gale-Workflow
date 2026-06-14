@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ψ Vault — สมองแบบไฟล์ของ Oracle: memory, learnings, retrospectives, traces และ spawn-context ที่ทำให้ความรู้อยู่รอดข้าม session">
+  <title>ψ Vault | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html" class="active" aria-current="page"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 03</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>ψ Vault</h1>
+          <p class="chapter-lead">สมองแบบไฟล์ของ Oracle — memory, learnings, retrospectives, traces และ spawn-context ที่ทำให้ความรู้อยู่รอดข้าม session</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">3.1 ψ คืออะไร — File-Based Brain</h2>
+          <p>ψ (อักษรกรีก "psi") คือสัญลักษณ์ที่ Gale Workflow ใช้แทน external brain ของ Oracle โดยรวม ψ Vault คือระบบไฟล์ที่มีโครงสร้าง เก็บความรู้ บทเรียน และ context ในรูปแบบที่ทั้งมนุษย์และ AI อ่านได้โดยตรงโดยไม่ต้องผ่าน interface พิเศษ</p>
+          <p>แนวคิดสำคัญคือ "ความรู้ควรอ่านได้ ย้ายได้ และอยู่รอดนานกว่า session" — ถ้าระบบทั้งหมดล่มแล้วคุณยังเปิด <code>ψ/memory/learnings/</code> ได้ด้วย text editor และอ่านบทเรียนทั้งหมดได้ ψ Vault ไม่ได้ lock ความรู้ไว้ใน database ที่ต้องมี service ขึ้นมา</p>
+          <p>ψ Vault ทำงานร่วมกับ arra-oracle-v3 MCP server ซึ่งให้ความสามารถ search แบบ hybrid (FTS5 + bge-m3 vector) บน content ของ ψ แต่ root ของทุกอย่างยังคงเป็นไฟล์ธรรมดา ไม่ใช่ black box</p>
+
+          <blockquote>
+            <strong>กฎ MANDATORY FIRST STEP:</strong> ทุก action ใน Gale Workflow เริ่มต้นด้วย <code>oracle_search("relevant query")</code> ผ่าน MCP tool ก่อนเสมอ — ก่อนอ่านไฟล์ ก่อน edit ก่อนตอบ ψ Vault มี learnings สะสมที่ป้องกันการทำผิดซ้ำ การข้ามขั้นตอนนี้คือการไม่ใช้ประโยชน์จาก external brain
+          </blockquote>
+
+          <h2 id="section-2">3.2 โครงสร้างโฟลเดอร์ ψ</h2>
+          <p>โครงสร้างของ ψ Vault ออกแบบให้แต่ละโฟลเดอร์มีวัตถุประสงค์ชัดเจน ไม่ซ้อนทับกัน การรู้โครงสร้างนี้ช่วยให้ค้นหา learnings ที่ถูกต้องได้เร็ว และรู้ว่าจะเขียนสิ่งใหม่ลงที่ไหน</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>โฟลเดอร์</th>
+                <th>เนื้อหา</th>
+                <th>ใช้เมื่อ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>ψ/inbox/</code></td>
+                <td>Handoffs, notes จาก session ก่อนหน้า, pending items</td>
+                <td>รับส่ง context ระหว่าง session; อ่านตอนเริ่ม session ใหม่</td>
+              </tr>
+              <tr>
+                <td><code>ψ/memory/learnings/</code></td>
+                <td>Pattern ที่สังเกตได้, บทเรียนจากการทำงาน, anti-pattern</td>
+                <td>บันทึกหลัง retrospective; search ก่อนตอบทุกครั้ง</td>
+              </tr>
+              <tr>
+                <td><code>ψ/memory/retrospectives/</code></td>
+                <td>สรุปหลังจบงานหรือจบ session (AI diary)</td>
+                <td>เขียนหลัง <code>/rrr</code>; อ่านเพื่อ context ของ project ใน session ก่อน</td>
+              </tr>
+              <tr>
+                <td><code>ψ/traces/</code></td>
+                <td>หลักฐานตามรอย: repo path, commit hash, issue #, PR #</td>
+                <td>เมื่อต้องตาม trace ว่าโค้ดส่วนนี้เปลี่ยนเมื่อไหร่และทำไม</td>
+              </tr>
+              <tr>
+                <td><code>ψ/active/</code></td>
+                <td>สถานะงานที่กำลังดำเนินการอยู่</td>
+                <td>ติดตาม sprint progress; L2 อัพเดทระหว่างทำงาน</td>
+              </tr>
+              <tr>
+                <td><code>ψ/archive/</code></td>
+                <td>Learnings, retrospectives ที่เก่าแต่ยังอ้างอิงได้</td>
+                <td>Never delete — ย้ายมาที่นี่เมื่อ content เก่าเกิน 6 เดือน</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>โฟลเดอร์ <code>ψ/</code> อยู่ใน root ของ oracle repo และถูก gitignore โดยตั้งใจ (เพื่อไม่ให้ personal knowledge ของ oracle ไปปน repo สาธารณะ) แต่ content ข้างในสามารถ commit ด้วย oracle ได้หากต้องการ share knowledge</p>
+
+          <h2 id="section-3">3.3 Learning Lifecycle — จาก Observation ถึงการนำไปใช้</h2>
+          <p>Learning ใน ψ ไม่ได้เกิดขึ้นเองโดยอัตโนมัติ มันเกิดจาก cycle ที่มีโครงสร้าง: สังเกตสิ่งที่เกิดขึ้นจริง → เขียน learning ลงในไฟล์ → search learning ก่อนตอบครั้งต่อไป → นำ learning ที่เกี่ยวข้องมาใช้ในการตัดสินใจ</p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart LR
+  Observe["สังเกต\nพฤติกรรมจริง"]
+  Write["เขียน Learning\nลง ψ/memory/learnings/"]
+  Index["อัพเดท\nMEMORY.md index"]
+  Search["oracle_search\n(ก่อนตอบทุกครั้ง)"]
+  Apply["นำ Learning\nมาใช้ตัดสินใจ"]
+  New["สังเกตผล\nของการตัดสินใจ"]
+
+  Observe --&gt; Write
+  Write --&gt; Index
+  Index --&gt; Search
+  Search --&gt; Apply
+  Apply --&gt; New
+  New --&gt; Observe</div>
+            <figcaption><strong>ภาพที่ 3.1: Learning Lifecycle ใน ψ Vault</strong><span>สังเกต → เขียน → index → search → นำไปใช้ → สังเกตผล → วนซ้ำ cycle นี้คือวิธีที่ Oracle สะสมความรู้ข้าม session</span></figcaption>
+          </figure>
+
+          <p>การ search ควรทำก่อน action ทุกครั้ง แม้งานจะดูง่าย เหตุผลคือ ψ Vault สะสม learnings จากหลาย session หลาย project และหลาย oracle มีโอกาสสูงมากที่จะมี learning เกี่ยวข้องที่บันทึกไว้แล้ว การไม่ search ก่อนเปรียบเหมือนแก้ปัญหาโดยไม่อ่านบันทึกที่คนก่อนทิ้งไว้</p>
+
+          <h2 id="section-4">3.4 Memory File Format — Frontmatter และประเภท</h2>
+          <p>Learning file ทุกไฟล์ใช้รูปแบบ Markdown พร้อม YAML frontmatter ที่กำหนดโครงสร้างของ metadata frontmatter ทำให้ search engine สามารถ filter ตาม type, tag หรือ project ได้</p>
+
+          <pre><code>---
+name: worktree-spawn-race-condition
+description: "OMX worker spawn ใน worktree ก่อน codex input-ready ทำให้ brief ไม่ถึง"
+metadata:
+  type: reference
+  tags: [maw, worktree, omx, spawn]
+  project: gale-framework
+  discovered: 2026-06-13
+  related: [[auto-kickoff-mechanism]]
+---
+
+## Pattern ที่สังเกตได้
+เมื่อ `maw team spawn --wt --engine omx --exec` รัน codex อาจยังไม่พร้อม
+รับ input ตอนที่ brief ส่งถึง ทำให้ worker เห็น "submit FAILED" ...
+
+## การแก้ไข
+ใช้ auto-kickoff mechanism ที่ maw-js v2.1.0+ ดูแลแทน
+spawn ด้วย `--exec --prompt "..."` แล้วรอ confirmation ว่า kickoff delivered
+
+## หลักฐาน
+- Commit: abc1234 (maw-js)
+- Issue: [[issue-1388-maw-send-alias]]</code></pre>
+
+          <p>มี 4 ประเภทหลักของ memory file: <strong>user</strong> (ความชอบและ preference ของเจ้าของ), <strong>feedback</strong> (สิ่งที่ได้รับ feedback จากมนุษย์), <strong>project</strong> (บริบทและ pattern ของแต่ละ project), และ <strong>reference</strong> (เอกสาร tool หรือ API ที่ค้นพบระหว่างทำงาน) แต่ละประเภทมีน้ำหนักในการ search ต่างกัน</p>
+          <p>การ link ระหว่าง memory file ใช้ double-bracket syntax <code>[[name]]</code> ซึ่ง arra-oracle-v3 จะ resolve เป็น full path โดยอัตโนมัติ ทำให้สร้าง knowledge graph ของ learnings ที่เชื่อมกันได้</p>
+
+          <h2 id="section-5">3.5 Retrospectives — AI Diary และ Lessons Learned</h2>
+          <p>Retrospective คือสรุปหลัง session หรือหลังจบงานสำคัญ เขียนผ่าน skill <code>/rrr</code> (ย่อมาจาก "reflection, retrospective, review") มันเป็น "AI diary" ที่บันทึกว่า session นี้ทำอะไร เจอปัญหาอะไร ตัดสินใจอย่างไร และได้บทเรียนอะไร</p>
+          <p>Retrospective เก็บตาม timestamp ใน <code>ψ/memory/retrospectives/YYYY-MM-DD-slug.md</code> ไม่เขียนทับ (P1: Nothing is Deleted) เมื่อ session ถัดไปเริ่ม Oracle สามารถอ่าน retrospective ล่าสุดเพื่อรู้ว่า session ก่อนจบที่ไหนและทำอะไรไปบ้าง</p>
+          <p>Retrospective ที่ดีมีส่วนประกอบ: สิ่งที่ทำสำเร็จ, ปัญหาที่เจอและวิธีแก้, การตัดสินใจสำคัญพร้อมเหตุผล, และ lessons learned ที่ควรเขียนลงเป็น learning file แยก ส่วน "lessons learned" นี้สำคัญมาก เพราะมันเป็น input ของ Learning Lifecycle</p>
+
+          <pre><code>---
+date: 2026-06-14
+session: fix-validation-bug-sprint-42
+oracle: my-oracle
+---
+
+## สิ่งที่ทำสำเร็จ
+- แก้ validation bug ใน orders.ts (Issue #42) ด้วย TEAM routing
+- worker-1 และ worker-2 ทำงานได้โดยไม่ต้องนัดเจอ
+- PR ผ่าน scrutinize ครั้งแรก ไม่มี bounce
+
+## ปัญหาที่เจอ
+- maw team status แสดง idle แต่ worker จริงๆ ทำงานอยู่
+  → แก้ด้วย maw capture แทน (pattern นี้เขียนเป็น learning แล้ว)
+
+## Lessons Learned
+- อย่าเชื่อ maw team status สำหรับ omx worker — ใช้ maw capture
+- Brief ที่ดีระบุ filename จริงช่วยให้ worker ไม่ต้องเดา</code></pre>
+
+          <h2 id="section-6">3.6 Spawn-Context และ Handoff — ส่งต่อ Context ข้าม Session</h2>
+          <p>เมื่อ session กำลังจะจบ แต่งานยังไม่เสร็จ Oracle รัน skill <code>/forward</code> หรือ <code>/handoff</code> เพื่อสร้างไฟล์ใน <code>ψ/inbox/</code> ที่มี context สำหรับ session ถัดไป ไฟล์นี้รวม: งานที่ค้างอยู่, การตัดสินใจที่ยังไม่ได้ตัดสิน, PRs ที่รอ review, และ context ที่จำเป็นเพื่อ resume งาน</p>
+          <p>Session ถัดไปเริ่มต้นด้วยการรัน <code>/recap</code> ซึ่งจะอ่าน handoff ใน inbox, ดู git status ปัจจุบัน, และประมวลผลว่า session นี้ควรทำอะไรก่อน ไม่ต้องให้มนุษย์ re-explain context ทั้งหมดใหม่</p>
+
+          <pre><code># ψ/inbox/handoff-2026-06-14-T2200.md
+---
+type: handoff
+from: my-oracle
+session-ended: 2026-06-14T22:00:00
+---
+
+## งานค้าง
+- PR #87 รอ scrutinize และ merge (Issue #42 validation bug)
+- PR #88 รอ scrutinize (Issue #43 error logging)
+- รัน `maw done sprint-42-window` หลัง merge ทั้งสอง
+
+## Context สำคัญ
+- maw team sprint-42 shutdown แล้ว
+- worktree อยู่ที่ ~/worktrees/my-product-issue-42
+- ทั้งสอง PR ผ่าน lint/build/test แล้ว
+
+## Next Action
+1. gh pr view 87 → /scrutinize → merge
+2. gh pr view 88 → /scrutinize → merge
+3. maw done sprint-42-window</code></pre>
+
+          <h2 id="section-7">3.7 ทำไมใช้ไฟล์ ไม่ใช่ Database อย่างเดียว</h2>
+          <p>คำถามที่เกิดขึ้นบ่อยคือ "ทำไมไม่เก็บทุกอย่างใน vector database หรือ relational database?" คำตอบมีหลายมิติ ทั้งทางปฏิบัติและทางหลักการ</p>
+          <p><strong>Debuggability:</strong> เมื่อ Oracle ตอบผิดหรือนำ learning ผิดมาใช้ คุณสามารถเปิดไฟล์ที่ Oracle อ้างอิงได้ทันที ถ้า learning อยู่ใน black box database คุณต้องผ่าน query interface ซึ่งอาจไม่ reflect สิ่งที่ model จริงๆ เรียนรู้มา</p>
+          <p><strong>Human-readable เท่ากับ AI-readable:</strong> Gale Workflow ออกแบบให้มนุษย์และ AI อ่าน ψ Vault ได้เหมือนกัน คุณ review learning ของ Oracle ได้ด้วยตาเปล่า เห็นว่ามันถูกต้อง อัพเดทหรือลบถ้าผิด โดยไม่ต้องเชื่อระบบ</p>
+          <p><strong>Portability:</strong> ψ Vault คือโฟลเดอร์ธรรมดา ย้ายข้ามเครื่อง backup ด้วย git หรือ rsync ได้ และไม่ต้องพึ่งพา service ที่อาจหยุดให้บริการ ความรู้อยู่กับคุณตลอดไป ไม่ใช่กับ vendor</p>
+          <p>ในส่วนของ search ที่ต้องการความเร็วและ semantic matching นั้น arra-oracle-v3 ให้ hybrid search (FTS5 keyword + bge-m3 vector) บนไฟล์ เหมือนกับการมี database layer ไว้ query แต่ source of truth ยังเป็นไฟล์ รายละเอียดของ search engine อยู่ในบทที่ 5</p>
+
+          <pre><code># ตัวอย่างการ search ผ่าน MCP tool (ทำก่อน action ทุกครั้ง)
+# ในทาง implementation คือเรียก MCP tool oracle_search
+
+# ผลลัพธ์ที่ได้จะเป็น list ของ learnings พร้อม score
+# Oracle นำมาอ่านและใช้ประกอบการตัดสินใจ
+
+# โครงสร้างไฟล์ที่ oracle_search scan:
+# ψ/memory/learnings/*.md
+# ψ/memory/retrospectives/*.md
+# ψ/traces/*.md
+# MEMORY.md (index file)
+
+# Index file MEMORY.md ควรอัพเดทหลังสร้าง learning ใหม่:
+# ## Recent Learnings
+# - [[worktree-spawn-race-condition]] — 2026-06-13
+# - [[maw-team-status-unreliable-omx]] — 2026-06-14</code></pre>
+
+          <h2 id="section-8">สรุปบทที่ 03</h2>
+          <p>ψ Vault คือสิ่งที่ทำให้ Gale Workflow แตกต่างจากการใช้ AI coding agent แบบธรรมดา มันเป็น external brain ที่ความรู้สะสมได้ข้าม session สะสมได้ข้าม oracle และสะสมได้ข้าม project ทั้งหมดในรูปแบบที่อ่านได้ ย้ายได้ และ debug ได้</p>
+          <p>โครงสร้างไฟล์ที่ชัดเจน (inbox, learnings, retrospectives, traces, active, archive) ทำให้ทั้งมนุษย์และ Oracle รู้ว่าข้อมูลแต่ละประเภทอยู่ที่ไหน Learning Lifecycle ที่วนซ้ำ (สังเกต → เขียน → search → ใช้) เป็น mechanism ที่ทำให้ Oracle ฉลาดขึ้นเรื่อยๆ โดยไม่ต้อง retrain โมเดล</p>
+          <p>กฎ MANDATORY FIRST STEP ที่ว่า "search ก่อนตอบทุกครั้ง" ไม่ใช่แค่ best practice แต่เป็น implementation ของ P2 (Patterns Over Intentions) — ดูสิ่งที่รู้จริงจาก ψ ก่อนเชื่อว่าจำได้จาก training data บทถัดไป (ch05) จะอธิบาย arra-oracle-v3 search engine ที่ขับเคลื่อน ψ Vault ในเชิงเทคนิคลึกขึ้น</p>
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch02.html">← สถาปัตยกรรม 3 ชั้น</a>
+          <a class="button primary" href="ch04.html">ติดตั้งจาก 0 →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

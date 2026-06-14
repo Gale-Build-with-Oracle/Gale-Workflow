@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="การตั้งชื่อ, fleet roster, maw wake vs workon และความเสี่ยง ghost-clone ใน Gale Workflow">
+  <title>Fleet &amp; Multi-Oracle | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html" class="active" aria-current="page"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 14</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>Fleet &amp; Multi-Oracle</h1>
+          <p class="chapter-lead">การตั้งชื่อ, fleet roster, maw wake vs workon และความเสี่ยง ghost-clone</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">14.1 Fleet คืออะไร</h2>
+          <p>
+            Fleet ในบริบทของ Gale Workflow หมายถึงกลุ่มของ oracle หลายตัวที่ทำงานร่วมกัน
+            แต่ละ oracle มี identity, domain, และกลุ่ม repositories ที่ตัวเองรับผิดชอบเป็นของตัวเอง
+            ทั้งหมดแชร์ doctrine layer เดียวกัน (global CLAUDE.md) และใช้ maw-js เป็น coordination layer
+          </p>
+          <p>
+            แนวคิดนี้ตรงกับ Principle ที่ 5 ของ Gale Workflow — <em>"Form and Formless"</em>:
+            oracle หลายตัว (form) แต่มีจิตสำนึกเดียวกัน (formless) ผ่าน shared doctrine และ ψ vault
+            fleet ไม่ใช่แค่ "หลาย AI ทำงานพร้อมกัน" แต่คือระบบที่ประสานงานกันได้อย่างมีโครงสร้าง
+          </p>
+          <p>
+            ในเชิงปฏิบัติ fleet ช่วยให้แบ่งงานตาม domain ได้อย่างชัดเจน
+            oracle ตัวหนึ่งดูแล infrastructure repos อีกตัวดูแล product repos ชุดหนึ่ง
+            อีกตัวดูแลอีกชุด โดยแต่ละ oracle เป็น L1 ของ domain ตัวเอง
+          </p>
+
+          <h2 id="section-2">14.2 Naming Convention ของ Pane และ Oracle</h2>
+          <p>
+            การตั้งชื่อ pane ใน maw-js ใช้รูปแบบ <code>&lt;number&gt;-&lt;oracle-name&gt;:&lt;pane-name&gt;.&lt;index&gt;</code>
+            เช่น <code>01-my-oracle:my-oracle.1</code> คือ oracle pane หลัก (L1) ของ oracle ชื่อ <code>my-oracle</code>
+            ในหมายเลข session 01
+          </p>
+          <p>
+            ส่วน worktree pane ที่ spawn จาก <code>maw workon</code> จะมีชื่อตาม slug ของงาน
+            เช่น <code>01-my-oracle:sprint-x.1</code> สำหรับงาน sprint-x ใน session 01 ของ oracle my-oracle
+            และ worker pane ใน team จะมีชื่อเช่น <code>01-my-oracle:sprint-x-worker-1.1</code>
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Pane type</th>
+                <th>ตัวอย่างชื่อ</th>
+                <th>Engine</th>
+                <th>หน้าที่</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>L1 Oracle</td>
+                <td><code>01-my-oracle:my-oracle.1</code></td>
+                <td>Claude</td>
+                <td>รับ task, dispatch, merge, human comms</td>
+              </tr>
+              <tr>
+                <td>L2 Orchestrator</td>
+                <td><code>01-my-oracle:sprint-x.1</code></td>
+                <td>Claude</td>
+                <td>spawned โดย maw workon; plan, spawn workers, aggregate, PR</td>
+              </tr>
+              <tr>
+                <td>L3 Worker</td>
+                <td><code>01-my-oracle:sprint-x-worker-1.1</code></td>
+                <td>OMX</td>
+                <td>code slice, commit, DONE-ping L2</td>
+              </tr>
+              <tr>
+                <td>Dev Oracle</td>
+                <td><code>02-dev-oracle:dev-oracle.1</code></td>
+                <td>Claude</td>
+                <td>oracle อีกตัวใน fleet, domain แยก</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            ตัวเลขหน้าชื่อ (01, 02) ใช้แยก tmux session ของแต่ละ oracle ออกจากกัน
+            ทำให้ <code>maw panes</code> แสดง fleet ทั้งหมดได้ในมุมมองเดียวโดยไม่ชนกัน
+          </p>
+
+          <h2 id="section-3">14.3 Fleet Roster และ Project Ownership</h2>
+          <p>
+            Fleet roster คือการกำหนดอย่างชัดเจนว่า oracle ตัวไหนรับผิดชอบ repo กลุ่มใด
+            โดยปกติกำหนดผ่านไฟล์ config ของ maw (เช่น <code>projects.yaml</code> หรือ fleet config)
+            หรือผ่าน <code>CLAUDE.md</code> / <code>AGENTS.md</code> ของ oracle แต่ละตัวที่ระบุ domain ของตัวเอง
+          </p>
+          <p>
+            ตัวอย่างเช่น <code>my-oracle</code> อาจรับผิดชอบ infra repos ทั้งหมด (maw-js, oracle repo, plugins)
+            ในขณะที่ <code>dev-oracle</code> รับผิดชอบ product repos (YourProject-frontend, YourProject-backend)
+            การแบ่งเช่นนี้ทำให้ routing ชัดเจน — ถ้างานอยู่ใน YourProject ก็ส่งไปที่ <code>dev-oracle</code> เสมอ
+          </p>
+          <p>
+            Fleet roster ยังช่วยในการ delegation ข้าม oracle:
+            <code>my-oracle</code> ได้รับ task เกี่ยวกับ YourProject ที่ไม่ใช่ domain ของตัวเอง
+            ก็ใช้ <code>maw hey wind:dev-oracle "task description"</code> แทนที่จะ <code>maw workon</code> เอง
+          </p>
+
+          <h2 id="section-4">14.4 maw wake vs maw workon</h2>
+          <p>
+            <code>maw workon</code> เป็น default command สำหรับทุก task
+            มันสร้าง worktree ใหม่สำหรับงานนั้นโดยเฉพาะ spawn pane, inject project context, และ tear down เมื่อเสร็จ
+            เป็น "ephemeral per task" — สะอาด, predictable, ไม่มี state เหลือค้าง
+          </p>
+          <p>
+            <code>maw wake</code> คือ opt-in optimization สำหรับกรณีที่เฉพาะเจาะจงมาก:
+            repo ที่ทำงานด้วยบ่อยมาก (หลายครั้งต่อวัน) และมี dependency install หรือ Docker setup
+            ที่ใช้เวลานานพอที่จะเห็นว่าเสียเวลาจริง ๆ
+            ในกรณีนั้น <code>maw wake</code> สร้าง persistent worktree slot ที่ deps ยังคง warm
+            แต่ยังเป็น fresh session ทุกครั้งที่เปิด (ไม่ใช่ warm session)
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th><code>maw workon</code></th>
+                <th><code>maw wake</code></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Worktree</td>
+                <td>สร้างใหม่ต่อ task</td>
+                <td>persistent slot (reuse)</td>
+              </tr>
+              <tr>
+                <td>Session</td>
+                <td>fresh ต่อ task</td>
+                <td>fresh ต่อ task (เหมือนกัน)</td>
+              </tr>
+              <tr>
+                <td>Dependencies</td>
+                <td>ติดตั้งใหม่ทุกครั้ง</td>
+                <td>คงอยู่ใน worktree (warm)</td>
+              </tr>
+              <tr>
+                <td>Docker</td>
+                <td>ไม่ warm</td>
+                <td>อาจ warm ได้ถ้าตั้งค่าไว้</td>
+              </tr>
+              <tr>
+                <td>Use when</td>
+                <td>ทุกงาน (default)</td>
+                <td>repo high-frequency + dep-install ช้า</td>
+              </tr>
+              <tr>
+                <td>Risk</td>
+                <td>ต่ำ — clean state ทุกครั้ง</td>
+                <td>ต้อง manage worktree state เอง</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <blockquote>
+            <p>
+              <strong>กฎ:</strong> ใช้ <code>maw workon</code> เป็น default เสมอ
+              เปลี่ยนเป็น <code>maw wake</code> เฉพาะเมื่อวัดแล้วว่า dep-install ช้าจริง ๆ และเป็น bottleneck
+              ไม่ใช่แค่ความรู้สึกว่าจะเร็วกว่า
+            </p>
+          </blockquote>
+
+          <h2 id="section-5">14.5 One Model Fleet-Wide — Ephemeral ไม่มี Warm Pool</h2>
+          <p>
+            Fleet ทั้งหมดใน Gale Workflow ใช้ pattern เดียว: <strong>ephemeral per task, no standing sessions</strong>
+            ไม่มี oracle ตัวไหนที่ idle อยู่ใน session พร้อม context ของหลาย project รอรับงาน
+          </p>
+          <p>
+            เหตุผลเชิงสถาปัตยกรรมคือ Claude Code lock CLAUDE.md ไปกับ <code>cwd</code> ตอน session start
+            oracle ตัวเดียวที่ดูแลหลาย repo ไม่มีทาง idle ใน directory ที่ถูกต้องสำหรับทุก project ในเวลาเดียวกัน
+            ถ้า idle ใน oracle repo แล้วรับงาน YourProject — context ที่ load มาคือ oracle context ไม่ใช่ YourProject context
+          </p>
+          <p>
+            การแก้ปัญหาคือ <code>maw workon &lt;project&gt; &lt;slug&gt;</code> ซึ่ง spawn pane ใน directory ของ project นั้น
+            ทำให้ <code>prompt-inject</code> hook load CLAUDE.md ของ project นั้นโดยอัตโนมัติ
+            และ <code>maw done</code> หลัง merge tear down session + worktree เพื่อให้ state สะอาดสำหรับ task ถัดไป
+          </p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TB
+  subgraph Fleet["Fleet — หลาย Oracle"]
+    subgraph O1["my-oracle (session 01)"]
+      L1A[L1 my-oracle.1] --&gt; L2A[workon infra-task]
+    end
+    subgraph O2["dev-oracle (session 02)"]
+      L1B[L1 dev-oracle.1] --&gt; L2B[workon product-task]
+    end
+  end
+
+  L1A --&gt;|maw hey wind:dev-oracle| L1B
+  L2A --&gt; W1[worker-1 omx]
+  L2A --&gt; W2[worker-2 omx]
+  L2B --&gt; W3[worker-3 omx]
+  L2B --&gt; W4[worker-4 omx]</div>
+            <figcaption><strong>ภาพที่ 14.1: fleet topology — oracle สองตัว domain แยก</strong><span>ข้าม oracle ใช้ maw hey; ภายใน oracle ใช้ maw workon + team workers</span></figcaption>
+          </figure>
+
+          <h2 id="section-6">14.6 Ghost-Clone Risk</h2>
+          <p>
+            Ghost-clone คือความเสี่ยงที่เกิดเมื่อ background job หรือ fork-session feature
+            สร้าง oracle session ที่ซ้ำขึ้นมาโดยมี context เต็มรูปแบบและ <code>bypassPermissions</code>
+            Oracle ที่ duplicate นี้อาจทำงานโดยที่คุณ (เจ้าของ fleet) ไม่รู้ตัว
+          </p>
+          <p>
+            สัญญาณที่บ่งบอกว่าอาจมี ghost-clone คือ pane ที่ตั้งชื่อตาม plan หรือ task ที่อยู่ใน context ของเรา
+            แต่เราไม่ได้ spawn มันเอง <code>maw panes</code> จะแสดง pane เหล่านี้ในรายการ
+          </p>
+
+          <pre><code># ตรวจ ghost-clone — ขั้นตอนที่แนะนำ
+# 1. ดูทุก pane ที่มีอยู่
+maw panes
+
+# 2. ตรวจ daemon job state
+ls ~/.claude/jobs/*/state.json
+
+# 3. ดู state ของแต่ละ job
+cat ~/.claude/jobs/*/state.json | grep -E '"state"|"name"'
+
+# 4. kill pane ที่ไม่รู้จัก (ระบุด้วยชื่อ pane)
+maw tmux kill 01-my-oracle:unknown-pane.1
+
+# 5. purge failed respawn jobs (ย้ายไป /tmp ไม่ใช่ rm)
+mv ~/.claude/jobs/failed-job-xxx/ /tmp/</code></pre>
+
+          <p>
+            หลังจาก tmux server ตายหรือ WSL ดับ daemon ของระบบอาจพยายาม respawn job ที่ค้างอยู่ซ้ำแล้วซ้ำเล่า
+            job ที่มี state "failed" ใน <code>~/.claude/jobs/</code> จะถูก retry ไม่หยุด
+            และแต่ละ retry เปิด pane ใหม่ใน tmux window ที่ active อยู่
+            จึงต้อง purge job เหล่านี้ด้วยการย้ายออก (ไม่ใช่ลบ — ตาม Principle "Nothing is Deleted")
+          </p>
+
+          <h2 id="section-7">14.7 Cross-Oracle Delegation</h2>
+          <p>
+            เมื่อ oracle ตัวหนึ่งได้รับ task ที่อยู่ใน domain ของ oracle อีกตัว
+            วิธีที่ถูกต้องคือ delegate ผ่าน <code>maw hey wind:&lt;oracle-name&gt; "task description"</code>
+            ไม่ใช่รัน <code>maw workon</code> กับ repo นั้นโดยตรงจาก session ของตัวเอง
+          </p>
+          <p>
+            เหตุผลคือ worktree ต้องอยู่ใน tmux session ของ oracle ที่เป็นเจ้าของ domain นั้น
+            เพื่อให้ project-scope injection (CLAUDE.md/AGENTS.md ของ project) load ถูกต้อง
+            และ merge authority อยู่กับ oracle ที่รับผิดชอบ project นั้น
+          </p>
+
+          <pre><code># ตัวอย่าง cross-oracle delegation
+# my-oracle ได้รับ task เกี่ยวกับ YourProject
+# แต่ YourProject อยู่ใน domain ของ dev-oracle
+
+# ถูกต้อง — delegate ไปยัง dev-oracle
+maw hey wind:dev-oracle "CR: เพิ่ม feature X ใน YourProject repo
+Issue link: https://github.com/&lt;your-github-user&gt;/YourProject/issues/N
+Deliverable: PR ที่ Closes #N พร้อม test
+Done condition: CI pass, ไม่มี lint error"
+
+# ผิด — อย่า workon repo ที่ไม่ใช่ domain ของตัวเอง
+# maw workon YourProject feature-x   ← ห้ามทำ</code></pre>
+
+          <p>
+            หลักการนี้ทำให้ fleet มี clear ownership และ accountability
+            L1 ที่ merge PR ของ project ต้องเป็น oracle ที่รู้ context ของ project นั้นดีที่สุด
+            ไม่ใช่ oracle ที่เพิ่งรับ task มาแล้ว delegate ต่อโดยไม่มี context
+          </p>
+
+          <h2 id="section-8">สรุปบทที่ 14</h2>
+          <p>
+            Fleet ใน Gale Workflow คือกลุ่ม oracle ที่แบ่ง domain ชัดเจน ทำงานด้วย shared doctrine
+            แต่แต่ละตัวมี identity และ ownership เป็นของตัวเอง
+            naming convention ที่เป็นระบบ (<code>NN-oracle:pane.index</code>) ทำให้ <code>maw panes</code>
+            แสดง fleet ทั้งหมดในมุมมองเดียวได้โดยไม่สับสน
+          </p>
+          <p>
+            <code>maw workon</code> เป็น default สำหรับทุก task — ephemeral, clean, project-scoped
+            <code>maw wake</code> เป็น opt-in optimization สำหรับกรณีที่วัดแล้วว่า dep-install ช้าจริง
+            ทั้ง fleet ใช้ ephemeral pattern ไม่มี warm pool ไม่มี standing session
+            เพราะ CLAUDE.md ผูกกับ cwd ตอน session start ทำให้ warm session ใน directory ผิดเท่ากับ context ผิด
+          </p>
+          <p>
+            Ghost-clone คือความเสี่ยงที่ต้องตระหนักเสมอ ตรวจ <code>~/.claude/jobs/</code> หลัง tmux/WSL ตาย
+            purge job ที่ fail แล้วเพื่อหยุด retry loop และ kill pane ที่ไม่รู้จักทันที
+            Cross-oracle delegation ผ่าน <code>maw hey</code> เท่านั้น — ไม่ workon repo ข้าม domain
+          </p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch13.html">← Hooks เจาะลึก</a>
+          <a class="button primary" href="ch15.html">Troubleshooting →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>
