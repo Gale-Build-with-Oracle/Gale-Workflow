@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -281,7 +282,12 @@ cat docs/.last-doc-sync
             </tbody>
           </table>
 
-          <h2 id="section-8">11.8 สรุปบทที่ 11</h2>
+          <h2 id="section-8">11.8 ทำไมเป็น 7 ไฟล์และไม่ใช้ RTM แยก</h2>
+          <p>ชุดเอกสาร 7 ไฟล์ถูกเลือกเพราะแยกหนึ่งไฟล์ต่อหนึ่ง SDLC concern โดยไม่สร้าง nesting overhead: CR เก็บการเปลี่ยนแปลง, SRS เก็บ requirement, SDD เก็บภาพออกแบบ, UAT เก็บ acceptance, RISK เก็บความเสี่ยง, UXUI เก็บ design decision และ TAILORING เก็บการปรับมาตรฐานของโปรเจกต์ ไฟล์น้อยกว่านี้จะรวม concern จนค้นยาก ไฟล์มากกว่านี้จะทำให้ agent เสียเวลาเลือกที่วางข้อมูล</p>
+          <p>Traceability อยู่ใน PR description แทน RTM แยกเพราะ PR เป็น append-only truth ของการเปลี่ยนแปลงจริง มี issue, commit, review, test และ merge SHA ผูกอยู่แล้ว RTM ที่ต้องแก้เองหลังงานเสร็จมัก rot: ตอน code เปลี่ยนแต่ matrix ไม่อัปเดต auditor จะเห็นเอกสารสวยแต่ไม่ตรงพฤติกรรมจริง</p>
+          <p>doc-sync จึงรันที่ stabilization ไม่ใช่ทุก PR การ batch หลัง feature PR หลายชุดช่วย amortize ต้นทุนของ haiku agents และลด per-PR doc churn เอกสารจะนิ่งก่อน UAT หรือ release ซึ่งเป็นจุดที่คนต้องใช้จริง ไม่ใช่สั่นทุกครั้งที่มี refactor ย่อย</p>
+
+          <h2 id="section-9">11.9 สรุปบทที่ 11</h2>
           <p>CMMI &amp; Docs ใน Gale Workflow ออกแบบให้เรียบง่ายและ sustainable ชุด 7 ไฟล์แบนราบให้ข้อมูลครบสำหรับทุก phase, REQ traceability thread เชื่อมทุกอย่างโดยไม่ต้องมีเอกสารพิเศษเพิ่ม และ doc-sync แบบ batch ทำให้ทีมมั่นใจว่าเอกสารตรงกับโค้ดก่อน UAT และ release</p>
           <p>กฎที่ต้องจำ: feature PR มีแค่ REQ line ไม่มีการแก้ docs; docs อัปเดต batch ด้วย haiku agents; SRS/UAT/CR เป็น living docs ที่ append ไม่ใช่ overwrite; SDD เป็น generated snapshot ไม่ใช่ maintained doc doc-sync ต้องรันก่อน UAT และก่อน release เสมอ</p>
           <p>ระบบนี้ทำให้ทีมใช้เวลาน้อยมากกับการ maintain เอกสาร (haiku ทำแทน) แต่ได้ traceability ที่ครบถ้วนและ audit-ready ตลอดเวลา บทถัดไปครอบคลุม Cross-Language support — การทำงานกับ stack ต่างๆ จาก Rust, Python, TypeScript ถึง SQL ใน Gale Workflow</p>

@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -349,7 +350,41 @@ docker compose ps</code></pre>
             ทุก deploy trace ได้ถึง PR และ commit ที่เฉพาะเจาะจง
           </p>
 
-          <h2 id="section-8">สรุปบทที่ 12</h2>
+          <h2 id="section-8">12.8 Meta-rule สำหรับภาษาใหม่และ polyglot aggregate</h2>
+          <p>workflow นี้ไม่จำเป็นต้องจำ catalog ของทุกภาษา สิ่งที่ต้องจำคือ meta-rule: verify ของ worker ทุกภาษาแบ่งเป็นสามแกนเสมอ — compile หรือ typecheck, test, และ lint หรือ static analysis ส่วน aggregate verify ของ L2 คือ consumer-facing build ที่พิสูจน์ว่าชิ้นงานรวมกันใช้งานได้ เช่น web build, package build หรือ docker build</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Language</th>
+                <th>Compile / Typecheck</th>
+                <th>Test</th>
+                <th>Lint / Static</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Java</td>
+                <td><code>mvn compile</code></td>
+                <td><code>mvn test</code></td>
+                <td><code>mvn checkstyle:check</code></td>
+              </tr>
+              <tr>
+                <td>Ruby</td>
+                <td><code>ruby -c</code> สำหรับไฟล์ที่แตะ หรือผ่าน task หลัก</td>
+                <td><code>rake</code></td>
+                <td><code>rubocop</code></td>
+              </tr>
+              <tr>
+                <td>Swift</td>
+                <td><code>swift build</code></td>
+                <td><code>swift test</code></td>
+                <td><code>swiftlint</code> ถ้า repo ใช้</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>ใน polyglot repo ห้ามให้ภาษาหนึ่งเป็นตัวแทนของทั้งระบบ Worker แต่ละคนรัน verify ของ slice ตัวเองก่อน commit จากนั้น L2 aggregate ต้องรันทั้งชุด verify ที่เกี่ยวข้องและ integration build ที่ consumer เห็นจริง เช่น backend tests + frontend typecheck + <code>docker build</code> สำหรับ service รวม</p>
+
+          <h2 id="section-9">12.9 สรุปบทที่ 12</h2>
           <p>
             Gale Workflow ออกแบบมาให้ orchestration layer เป็น language-agnostic อย่างแท้จริง
             L1, L2, maw commands และ hook chain ทำงานเหมือนกันไม่ว่าโปรเจกต์จะใช้ Python, Go, Rust หรือ TypeScript

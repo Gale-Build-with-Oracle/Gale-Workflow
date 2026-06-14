@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -351,10 +352,10 @@ maw fleet pr-queue
   participant L2 as L2 Worktree
   participant GH as GitHub PR
 
-  H -&gt;&gt; L1: งานใหม่ (issue #N)
+  H -&gt;&gt; L1: งานใหม่ (Issue No.N)
   L1 -&gt;&gt; L2: maw workon project issue-N
   L2 -&gt;&gt; L2: โค้ด + test + aggregate
-  L2 -&gt;&gt; GH: git push + maw pr (Closes #N)
+  L2 -&gt;&gt; GH: git push + maw pr (Closes No.N)
   L2 -&gt;&gt; L1: DONE-ping: PR พร้อม
   L2 -&gt;&gt; L2: touch .maw/done-pinged
   L1 -&gt;&gt; GH: /scrutinize
@@ -364,7 +365,17 @@ maw fleet pr-queue
             <figcaption><strong>ภาพที่ 10.2: PR lifecycle ตั้งแต่ issue จนถึง merge</strong><span>L2 หยุดที่ DONE-ping; L1 เป็นผู้ scrutinize, merge และ teardown</span></figcaption>
           </figure>
 
-          <h2 id="section-8">10.8 สรุปบทที่ 10</h2>
+          <h2 id="section-8">10.8 /scrutinize ทำอะไรจริง ๆ</h2>
+          <p>คำว่า <strong>scrutinize harder</strong> ไม่ได้แปลว่าอ่าน PR นานขึ้นแบบไม่มีทิศทาง แต่คือ procedure ที่ทำให้ L1 ตรวจจากเจตนาไปถึงพฤติกรรมจริงก่อน merge ทุกครั้ง คุณภาพของ Merge Gate จึงเท่ากับคุณภาพของการ scrutinize ไม่ใช่แค่การมีปุ่ม merge อยู่ที่ L1</p>
+          <ol>
+            <li><strong>Question intent:</strong> เริ่มจากถามว่า change นี้แก้ปัญหาถูกชั้นหรือไม่ มีวิธีที่เล็กกว่า ง่ายกว่า หรือปลอดภัยกว่าที่ให้ผลเดียวกันไหม ถ้าคำตอบคือมี ต้อง bounce ก่อน review รายละเอียด</li>
+            <li><strong>Trace actual code path:</strong> อ่าน path ที่ request หรือ user action วิ่งจริง ไม่ใช่ดูเฉพาะ diff เพราะ bug มักซ่อนอยู่ใน early return, wrapper, adapter หรือ consumer ที่ diff ไม่แตะ</li>
+            <li><strong>Verify claim vs behavior:</strong> เทียบ PR description, issue, test output และโค้ดที่รันจริงว่า claim เดียวกันหรือไม่ ถ้า test พิสูจน์คนละ claim กับที่ PR บอก merge gate ยังไม่ผ่าน</li>
+            <li><strong>Check consumer layer:</strong> ตรวจ layer ที่จะใช้ผลลัพธ์ เช่น UI, API client, container, CLI หรือ downstream job เพื่อให้แน่ใจว่า contract ที่เปลี่ยนถูก consume ได้จริง</li>
+          </ol>
+          <p>ขั้นตอนนี้ทำให้ L1 review เป็น independent verification ไม่ใช่ self-review ของคนเขียนโค้ด เมื่อ PR เป็น backend หรือ cross-boundary งาน scrutinize ต้องเดิน path จริงลึกกว่าเดิม แต่ skeleton ยังเหมือนเดิม: intent → path → behavior → consumer</p>
+
+          <h2 id="section-9">10.9 สรุปบทที่ 10</h2>
           <p>SOPs และ Merge Gate คือโครงสร้างที่ทำให้ Gale Workflow ทำงานได้อย่างเชื่อถือได้ในระยะยาว SOPs กำหนดว่าต้องโหลด skill อะไรก่อนเริ่มแต่ละ phase ป้องกันการข้ามขั้นตอนสำคัญ Merge Gate รับรองว่า L1 เป็นผู้ review อย่างอิสระก่อน merge ทุกครั้ง</p>
           <p>pre-guard hook ทำหน้าที่ป้องกันคำสั่งที่ทำให้ระบบเสียหาย ในขณะที่ DONE-ping และ on-stop crash safety ร่วมกันรับรองว่า L1 ไม่มีทางพลาด PR แม้ L2 จะ crash ระหว่างทาง ระบบนี้ทำให้ agent สามารถทำงานขนาดใหญ่ได้โดยไม่ต้องพึ่งพา human supervision ทุกขั้นตอน</p>
           <p>บทถัดไปครอบคลุม CMMI &amp; Docs — ชุดเอกสาร 7 ไฟล์แบบแบนราบ, REQ traceability thread และ doc-sync แบบ batch ที่ต้องรันก่อน UAT และ release ทุกครั้ง</p>
