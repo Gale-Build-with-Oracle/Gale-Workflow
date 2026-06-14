@@ -338,7 +338,48 @@ EOF
             ควรกันไม่ให้ skill deploy โหลดผิดบริบท
           </p>
 
-          <h2 id="section-9">สรุปบทที่ 06</h2>
+          <h2 id="section-9">6.9 เครดิตเจ้าของ Skills (Skills Attribution)</h2>
+
+          <p>
+            Gale Workflow ใช้ skills หลายชุดเป็นฐานความสามารถของ fleet แต่เราไม่ได้สร้างทุกอย่างขึ้นมาเองตั้งแต่ศูนย์
+            สิ่งที่เราทำคือ DIY, ปรับกติกา, และประกอบให้เข้ากับรูปแบบ 3-layer ephemeral ของเรา
+            ดังนั้นบทนี้ต้องให้เครดิตเจ้าของต้นฉบับอย่างชัดเจน สอดคล้องกับ Rule 6 และ NOTICE attribution: Oracle ไม่ควรแอบอ้างว่าเป็นเจ้าของงานของคนอื่น
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ต้นทาง</th>
+                <th>Skills ที่ fleet ใช้</th>
+                <th>บทบาทใน workflow</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>9arm</strong></td>
+                <td><code>/debug-mantra</code> → <code>/scrutinize</code> → <code>/post-mortem</code> → <code>/management-talk</code></td>
+                <td>bug-chain skills: เริ่มจาก reproduce และ root cause, ตรวจ outsider review, เขียน RCA, แล้วสื่อสารให้ leadership เข้าใจ</td>
+              </tr>
+              <tr>
+                <td><strong>@nazt / Soul-Brews-Studio</strong></td>
+                <td><code>/recap</code>, <code>/rrr</code>, <code>/dig</code>, <code>/trace</code>, <code>/learn</code>, <code>/awaken</code>, <code>/bud</code>, <code>/talk-to</code>, <code>/team-agents</code>, <code>/forward</code></td>
+                <td>oracle skills จาก <code>arra-oracle-skills-cli</code>: memory, session continuity, Oracle birth, team coordination, และ handoff</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <blockquote>
+            <strong>Credit chain:</strong> 9arm ให้โครง bug discipline; @nazt / Soul-Brews-Studio ให้ oracle skills foundation;
+            Gale Workflow นำมาปรับเป็น fleet doctrine, hooks, และ ephemeral worktree practice ของเรา
+          </blockquote>
+
+          <p>
+            เครดิตนี้สำคัญในเชิงเทคนิคด้วย เพราะมันบอก reader ว่า skill ecosystem ไม่ใช่ magic ที่เกิดจาก agent ตัวเดียว
+            แต่เป็นงานสะสมจากหลายเจ้าของที่ถูก version, fork, และปรับใช้ต่ออย่างมีร่องรอย เมื่อ fleet เปลี่ยน skill ในอนาคต
+            ต้องยังรักษา attribution นี้ไว้เหมือนที่รักษา commit history: append ไม่ลบ, ให้เครดิต ไม่กลบต้นทาง
+          </p>
+
+          <h2 id="section-10">สรุปบทที่ 06</h2>
 
           <p>
             Skills System คือกลไกที่ทำให้ workflow รู้สึกเหมือน "ระบบที่มีความสามารถเพิ่มขึ้นตามเวลา"
