@@ -193,7 +193,15 @@ maw team spawn sprint worker-1 --wt --engine omx --exec \
             </tbody>
           </table>
 
-          <h2 id="section-8">สรุปบทที่ 00</h2>
+          <h2 id="section-8">0.8 เครดิตและความถ่อมตน (Credit &amp; Humility)</h2>
+          <p>Gale Workflow ไม่ได้เกิดขึ้นจากสุญญากาศ รากฐานสำคัญมาจากงานของ <strong>อาจารย์ Nat Weerawan (@nazt)</strong> ที่วางระบบและเครื่องมือไว้แข็งแรงพอให้คนอื่นนำไปเรียนรู้ ทดลอง และต่อยอดได้อย่างอิสระ เครื่องมือใน upstream ของ Soul-Brews-Studio เช่น <code>maw-js</code>, <code>arra-oracle-v3</code>, <code>arra-oracle-skills-cli</code>, และ <code>maw-plugin-registry</code> คือฐานที่ทำให้ workflow แบบนี้ไม่ต้องเริ่มจากศูนย์</p>
+          <p>นอกจากเครื่องมือแล้ว หนังสือ <a href="https://nazt.github.io/agents-in-parallel">agents-in-parallel</a> และห้องเรียน <strong>oracle-worlds</strong> ยังให้ภาษาร่วมในการคิดเรื่อง multi-agent, orchestration, mailbox, และการให้ agent ทำงานคู่กับมนุษย์อย่างมีวินัย รากฐานที่แข็งแรงของอาจารย์ Nat คือสิ่งที่ทำให้เราสามารถ DIY workflow ของเราเองได้อย่างอิสระ โดยยังรู้ว่าเรายืนอยู่บนงานของใคร</p>
+
+          <blockquote>
+            <strong>กรอบความถ่อมตน:</strong> สถาปัตยกรรม 3-layer ephemeral ในหนังสือเล่มนี้เป็นเพียง <strong>ส่วนหนึ่งของ Gale Fleet</strong> เท่านั้น ไม่ใช่ best practice สากล ไม่ใช่คำตอบสุดท้าย และไม่ใช่กฎตายตัวสำหรับทุกทีม ยังมีหนทางอีกมากมายที่อาจดีกว่า เบากว่า หรือมีประสิทธิภาพกว่า เราเพียงเลือกสิ่งที่เหมาะกับ fleet ของเรา ณ เวลานี้ ผู้อ่านควรมองเนื้อหานี้เป็นแรงบันดาลใจและกรณีศึกษา (inspiration / case study) แล้วนำ principle ไปปรับให้เหมาะกับบริบทของตัวเอง
+          </blockquote>
+
+          <h2 id="section-9">สรุปบทที่ 00</h2>
           <p>ปัญหาหลักที่ Gale Workflow เกิดมาเพื่อแก้ไขคือ session amnesia — สภาวะที่ AI agent เริ่มต้นใหม่ทุก session โดยไม่มีความรู้จากอดีต ทำให้ผิดซ้ำและเสียเวลาป้อน context ซ้ำ ระบบ external brain ผ่าน ψ Vault และการ search ก่อนตอบทุกครั้งเป็นแกนหลักของการแก้ปัญหานี้</p>
           <p>สถาปัตยกรรม 3 ชั้นแบบ ephemeral ช่วยให้งานขนาดใหญ่แบ่งออกได้โดยที่ context ไม่บวม แต่ละ task ได้ worktree ของตัวเอง โหลด project context ที่ถูกต้อง และถูกทำลายเมื่อเสร็จ ไม่มีสิ่งค้างอยู่</p>
           <p>ตลอดหนังสือ 16 บทนี้ คุณจะได้เรียนรู้ทั้งหลักการ การติดตั้ง การใช้งานประจำวัน และการแก้ปัญหาระดับ production โดยเนื้อหาทั้งหมดเป็นภาษาไทยพร้อม English technical term ที่ใช้จริงในระบบ</p>
