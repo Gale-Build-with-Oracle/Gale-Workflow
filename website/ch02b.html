@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ความเจ็บปวดของ Gale Workflow — ทำไมระบบจึงลงเอยที่ 3-layer ephemeral หลัง flip หลายครั้งและมี counter-evidence ครบถ้วน">
+  <title>ความเจ็บปวด — ทำไมถึงเป็น 3-Layer Ephemeral | Gale Workflow</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html" class="active" aria-current="page"><span>CH 02b</span>ความเจ็บปวด</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 02b</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>ความเจ็บปวด — ทำไมถึงเป็น 3-Layer Ephemeral</h1>
+          <p class="chapter-lead">บทเรียนจากการ flip 5 ครั้ง — ทำไม Gale Workflow ถึงลงเอยที่ 3-layer ephemeral ทั้งที่มี counter-evidence</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">2b.1 บทเรียนจากการ flip 5 ครั้ง</h2>
+          <p>3-layer ephemeral ไม่ได้เกิดจากความชอบส่วนตัวหรือ diagram ที่ดูสวยกว่า แต่มาจากการลองผิดลองถูกจริงหลายรอบในเวลาใกล้กันมาก ระบบเคยลองทั้ง flat swarm, L2 orchestration, warm pool, per-project standing team, on-demand team และสุดท้ายกลับมาที่ 3-layer เพราะข้อจำกัดจริงของ session, cwd, resource และ human preference ชี้ไปทางนั้น</p>
+          <p>ความเจ็บปวดสำคัญคือทุก model มี counter-evidence ของตัวเอง ไม่มีทางเลือกใดสมบูรณ์แบบ ตารางนี้จึงไม่ใช่ประวัติแบบสวยงาม แต่เป็นบันทึกว่าแต่ละครั้งพยายามแก้ pain หนึ่ง แล้วไปเปิด pain อีกชุดหนึ่งแทน</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Model</th>
+                <th>What it was</th>
+                <th>Why tried</th>
+                <th>What FAILED</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2026-03-17</td>
+                <td><em>Discovery</em></td>
+                <td>พบข้อเท็จจริงเรื่อง session context</td>
+                <td>ทำความเข้าใจว่าทำไม agent ข้าม project แล้วโหลดบริบทผิด</td>
+                <td><code>CLAUDE.md</code> lock ตาม <code>cwd</code> ตอน session เริ่มต้น แต่บทเรียนนี้ถูกละเลยจนต้องเรียนซ้ำในเดือนมิถุนายน</td>
+              </tr>
+              <tr>
+                <td>pre-June</td>
+                <td>maw tile flat swarm</td>
+                <td>L1 + N Codex tiles, shared cwd, ไม่มี L2</td>
+                <td>อยาก parallelize coding โดยตรง</td>
+                <td>workers ใช้ cwd ร่วมกัน ไม่มี project isolation, flag สำหรับ worktree ไม่ได้ให้ isolation จริง, Codex orchestrate team เองไม่ได้, context bleed ข้าม task</td>
+              </tr>
+              <tr>
+                <td>2026-06-04</td>
+                <td><strong>3-layer ephemeral</strong></td>
+                <td>L1 Claude → L2 maw-workon Claude → L3 ephemeral OMX → maw done</td>
+                <td>Codex L2 orchestrate ไม่พอ ต้องมี Claude buffer ช่วย split, brief, monitor, aggregate</td>
+                <td>relay stall หลายจุด, submit false-negative, missed DONE ping, Opus L2 token cost, brief delivery gap ไป isolated worktree, status unreliable, L2 อาจ self-route SOLO</td>
+              </tr>
+              <tr>
+                <td>2026-06-10 AM</td>
+                <td>standing warm pool</td>
+                <td>workers เปิดค้างใน oracle meta-repo</td>
+                <td>ลด cold-start และตัด relay cost</td>
+                <td>workers idle ใน directory ผิด จึงโหลด context ผิดสำหรับ product repo บทเรียน 2026-03-17 เตือนไว้แล้ว แต่ system ยังเดินเข้าหา anti-pattern เดิม</td>
+              </tr>
+              <tr>
+                <td>2026-06-12 AM</td>
+                <td>per-project standing teams</td>
+                <td>หนึ่ง standing team ต่อ product repo, idle ใน worktree ที่ถูก project</td>
+                <td>แก้ context ให้ถูก repo พร้อมลด relay และ L2 cost</td>
+                <td>ยังมี idle-pane cost, stale session context, cross-task bleed, ต้องมี session refresh policy และ trust setup ต่อ repo มนุษย์ผู้ตัดสินใจปฏิเสธเพราะ idle cost</td>
+              </tr>
+              <tr>
+                <td>2026-06-12 PM</td>
+                <td>on-demand teams หรือ 2-layer</td>
+                <td>warm worktree + ephemeral session, L1 brief ตรง, team up → work → team down</td>
+                <td>ต้องการตัด relay stall และ idle waste พร้อมกัน</td>
+                <td>สังเคราะห์ insight ได้ว่า warm เฉพาะ worktree ไม่ใช่ session แต่ลด L2 buffer จึงพึ่ง L1 split ล่วงหน้ามากขึ้น</td>
+              </tr>
+              <tr>
+                <td>2026-06-13</td>
+                <td><strong>revert → 3-layer ephemeral</strong></td>
+                <td>กลับเป็น L1 → L2 → L3 → maw done</td>
+                <td>มนุษย์ผู้ตัดสินใจเลือกหลังเห็น counter-evidence ครบ</td>
+                <td>ยอมรับ relay cost เพื่อได้ orchestration buffer, project-scope injection และ independent L1 review พร้อมเพิ่ม layered context เพื่อลด duplication</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <figure class="figure-card">
+            <div class="mermaid">timeline
+  title Gale Workflow model flips
+  2026-03-17 : cwd lock discovered
+  pre-June : flat swarm pain
+  2026-06-04 : 3-layer ephemeral
+  2026-06-10 : warm pool reverted
+  2026-06-12 AM : standing per project rejected
+  2026-06-12 PM : on-demand synthesis
+  2026-06-13 : back to 3-layer</div>
+            <figcaption><strong>ภาพที่ 2b.1: Timeline ของการ flip</strong><span>ทุก flip แก้ pain หนึ่ง แต่ expose constraint อีกชุดหนึ่ง จนเหลือทางเลือกที่ยอมรับ tradeoff ได้ดีที่สุด</span></figcaption>
+          </figure>
+
+          <h2 id="section-2">2b.2 5 ทางเลือก เทียบกัน (5-Model × 4-Dimension Matrix)</h2>
+          <p>ถ้ามองเฉพาะความเร็ว 2-layer on-demand ดูน่าชนะ ถ้ามองเฉพาะความปลอดภัยของ context 3-layer ephemeral ดูน่าชนะ ถ้ามองเฉพาะความง่าย monolithic ดูน่าชนะ แต่ production workflow ไม่ได้ optimize มิติเดียว ต้องเทียบอย่างน้อย 4 มิติพร้อมกัน: content quality, maintainability, scalability และ resource management</p>
+          <p>เพื่อให้เห็นชัด เราเรียก model ทั้ง 5 แบบนี้: M1 Monolithic, M2 In-session subagents, M3 Standing หรือ warm teams, M4 On-demand 2-layer, M5 3-layer ephemeral</p>
+
+          <h3>Content / Quality</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>M1 Monolithic</td><td><strong>WEAK</strong> — context compaction ทำให้รายละเอียดหล่น และ agent เดียวเป็นทั้ง writer กับ reviewer จึงไม่มี independent review จริง</td></tr>
+              <tr><td>M2 In-session subagents</td><td><strong>MIXED</strong> — ดีมากสำหรับ read-only research เพราะหลาย agent อ่านพร้อมกันได้เร็ว แต่ feature coding กลายเป็น anti-No.157 ได้ง่าย เพราะ subagents share orchestrator context และอาจ hallucinate จาก prior turns</td></tr>
+              <tr><td>M3 Standing / warm</td><td><strong>CRITICAL WEAK</strong> — โหลด context ผิดได้ตั้งแต่ session start, cross-task bleed แทบ guaranteed, reviewer เห็นงานก่อนหน้ามาหมดแล้ว</td></tr>
+              <tr><td>M4 On-demand 2-layer</td><td><strong>STRONG</strong> — fresh session ลด bleed, warm worktree ให้ scope ถูกต้อง, L1 ยังทำ independent <code>/scrutinize</code></td></tr>
+              <tr><td>M5 3-layer ephemeral</td><td><strong>STRONG for complex</strong> — fresh per-worker worktrees ลด bleed เกือบศูนย์, มี anti-No.157 gate, L1 review แยกอิสระ แต่ต้อง verify ว่า L2 ไม่ self-route SOLO ผิดงาน</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Maintainability</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>M1 Monolithic</td><td><strong>MODERATE</strong> — process เดียว เข้าใจง่าย ไม่มี propagation problem แต่ไม่มี enforcement surface ที่บังคับ fan-out หรือ independent review</td></tr>
+              <tr><td>M2 In-session subagents</td><td><strong>MODERATE</strong> — coordination มองไม่เห็นจากภายนอก ไม่มี <code>maw capture</code> สำหรับตรวจ subagent ที่กำลัง drift</td></tr>
+              <tr><td>M3 Standing / warm</td><td><strong>HIGH BURDEN</strong> — status unreliable, blind send-enter เสี่ยง interrupt, ต้อง refresh session, charter parser มี gotcha และ shutdown ไม่ใช่ teardown ที่สะอาดเสมอ</td></tr>
+              <tr><td>M4 On-demand 2-layer</td><td><strong>MODERATE</strong> — relay น้อยกว่า M5 แต่ยังต้องมี charter หรือ team lifecycle และ trust setup ต่อ repo</td></tr>
+              <tr><td>M5 3-layer ephemeral</td><td><strong>MODERATE-HIGH</strong> — relay เป็น chronic failure source, L2 เพิ่ม doctrine-drift surface, fan-out gate เพิ่มไฟล์และ state ที่ต้องดูแล</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Scalability</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>M1 Monolithic</td><td><strong>CRITICAL WEAK</strong> — ทำได้ทีละ project, sequential, มี context ceiling เดียว และถ้าทำ loop ใหญ่ leak จะคูณตามจำนวนรอบ</td></tr>
+              <tr><td>M2 In-session subagents</td><td><strong>POOR coding / GOOD research</strong> — research ขนานดี แต่ coding บนไฟล์ร่วมกันชนกันง่าย และ context ทุกอย่างสะสมกลับ parent</td></tr>
+              <tr><td>M3 Standing / warm</td><td><strong>MODERATE single-project / POOR multi-project</strong> — ถ้า oracle ถือหลาย repo จะไม่มี idle directory เดียวที่ถูกต้อง และ cross-team collision เพิ่มขึ้น</td></tr>
+              <tr><td>M4 On-demand 2-layer</td><td><strong>GOOD</strong> — on-demand team ต่อ repo รันพร้อมกันได้ มี max worker ชัดเจน และ bounded ด้วย bandwidth ของ L1</td></tr>
+              <tr><td>M5 3-layer ephemeral</td><td><strong>BEST</strong> — parallel L2s × 4 OMX ต่อ L2 ให้ scale ได้ถึงหลาย coder พร้อมกันบน worktree แยก และ L2 ยังใช้ subagent research เพิ่ม context ได้</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Resource Management</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>M1 Monolithic</td><td><strong>MODERATE short / POOR scale</strong> — short task ใช้ resource น้อย แต่พอ scale จะชน limit ของ Opus session เดียวและ compaction cost มองไม่เห็น</td></tr>
+              <tr><td>M2 In-session subagents</td><td><strong>POOR at volume</strong> — subagent context สะสมกลับ parent ถาวรและถูกคิดที่ orchestrator rate</td></tr>
+              <tr><td>M3 Standing / warm</td><td><strong>WORST for multi-project</strong> — idle pane ถือ stale context ซึ่งเป็น liability ไม่ใช่ asset และใช้ resource โดยไม่มีงานจริง</td></tr>
+              <tr><td>M4 On-demand 2-layer</td><td><strong>GOOD</strong> — warm worktree + ephemeral session, ไม่มี idle pane, teardown ได้หลังจบงาน</td></tr>
+              <tr><td>M5 3-layer ephemeral</td><td><strong>HIGH complexity / cleanup</strong> — worker แต่ละคนมี fresh worktree ต้อง teardown, Opus L2 อยู่ทั้ง sprint, <code>maw done</code> ต้อง serialize และต้องระวัง ghost-clone risk</td></tr>
+            </tbody>
+          </table>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Dimension</th>
+                <th>Winner</th>
+                <th>Worst</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Content / Quality</td><td>M4 และ M5 tie เพราะ fresh context + independent L1 review</td><td>M3</td></tr>
+              <tr><td>Maintainability</td><td>M4 เพราะ hop น้อยที่สุดในกลุ่มที่ยังมี isolation</td><td>M3</td></tr>
+              <tr><td>Scalability</td><td>M5 เพราะ parallel L2s × 4 worker ต่อ L2</td><td>M1</td></tr>
+              <tr><td>Resource</td><td>M4 เพราะ warm worktree แต่ session ephemeral</td><td>M3</td></tr>
+            </tbody>
+          </table>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TD
+  M1[M1 Monolithic] --> Q1[Simple but weak review]
+  M2[M2 Subagents] --> Q2[Great research but risky coding]
+  M3[M3 Warm sessions] --> Q3[Wrong thing persists]
+  M4[M4 On-demand 2-layer] --> Q4[Warm worktree fresh session]
+  M5[M5 3-layer ephemeral] --> Q5[Buffer plus isolation]
+  Q4 --> Choice[Known work favors M4]
+  Q5 --> Choice[Discovered complexity favors M5]
+  Q3 --> Reject[Reject stale session]
+  Q1 --> Reject
+  Q2 --> Reject</div>
+            <figcaption><strong>ภาพที่ 2b.2: Model map</strong><span>ทุก model แก้คนละปัญหา แต่มีเพียง M4 และ M5 ที่แยก worktree warmth ออกจาก session freshness</span></figcaption>
+          </figure>
+
+          <h2 id="section-3">2b.3 Core Constraints 5 ข้อ (the physics)</h2>
+          <p>คำว่า physics ในที่นี้หมายถึงข้อจำกัดที่ไม่ยอมต่อรองกับ intention ของเรา ต่อให้ brief เขียนว่า "ต้องโหลด project context" ถ้า session เริ่มใน directory ผิด มันก็ยังโหลด context ผิด ต่อให้ประกาศว่า warm session ช่วยลด cost ถ้า session นั้นถือ stale context มันก็เป็น liability</p>
+
+          <ol>
+            <li><strong>cwd-lock:</strong> Claude Code และ Codex resolve <code>CLAUDE.md</code> / <code>AGENTS.md</code> จาก <code>cwd</code> ตอน session START แล้วไม่อัปเดตกลาง session วิธีเดียวที่จะได้ project context ถูกต้องคือเริ่ม session ใน project directory นั้นจริง ๆ ดังนั้น <code>maw workon &lt;project&gt;</code> จึงไม่ใช่ convenience แต่เป็น project-scoping mechanism หลัก</li>
+            <li><strong>one-oracle-many-projects:</strong> oracle หนึ่งตัวอาจถือ 10+ repo ไม่มี idle directory เดียวที่ถูกต้องสำหรับทุกงาน fixed-cwd standing worker จะผิดทันทีเมื่อ oracle ทำหลาย project</li>
+            <li><strong>relay-stall vs Opus-cost:</strong> 3-layer มี message-passing หลายจุดต่อ TEAM task และทุกจุดเป็น silent-fail point ได้ แต่ถ้าตัด L2 ออก 2-layer จะเสีย orchestration buffer ที่ช่วย split, course-correct และ aggregate งานซับซ้อน</li>
+            <li><strong>idle-pane cost:</strong> standing session ไม่ได้แค่ใช้ RAM หรือ token มันถือ stale context และต้องมี refresh policy ยิ่ง session อุ่นนาน ยิ่งเสี่ยงถือเรื่องเก่ามาปนกับงานใหม่</li>
+            <li><strong>context-bleed No.157:</strong> brief ที่ดีไม่ได้บังคับ fan-out ได้เอง L2 อาจตัดสินใจ SOLO แล้วกิน context มหาศาลบน product code ทั้งที่กฎบอกว่า Claude orchestrates, OMX codes จึงต้องมี <code>strategy.json</code>, pre-guard fan-out gate และ post-brief sweep</li>
+          </ol>
+
+          <h2 id="section-4">2b.4 The Core Insight</h2>
+          <blockquote>
+            <strong>Warm the expensive-to-rebuild thing (worktree), never the liability (session).</strong>
+          </blockquote>
+          <p>ประโยคนี้เป็นแกนของบททั้งบท สิ่งที่ expensive-to-rebuild คือ worktree: dependencies, Docker layers, branch state, generated artifacts และ local checkout ที่ใช้เวลาเตรียม สิ่งที่เป็น liability คือ session: conversation context, prior assumptions, stale task memory และ hidden compaction history</p>
+          <p>M1 และ M2 fail เพราะ persist แทบไม่มีอะไรที่ถูกต้อง ทุกครั้งต้อง rebuild context จาก prompt และ memory เดิม M3 fail เพราะ persist ผิดสิ่ง: session ถูกเรียกว่า warm แต่จริง ๆ คือ context bleed ที่รอเกิด ส่วน M4 และ M5 succeed เพราะแยกของสองอย่างนี้ออกจากกัน worktree อาจอุ่นได้ แต่ session ต้อง fresh</p>
+          <p>3-layer หรือ M5 เพิ่ม L2 orchestration buffer เข้ามา L2 ช่วยค้นพบ complexity กลางทาง, split เพิ่ม, course-correct และ aggregate ก่อน PR ค่าแลกเปลี่ยนคือ Opus session หนึ่งชุดและ relay ที่ stall ได้ ส่วน 2-layer on-demand หรือ M4 ตัด cost นั้นออกโดยให้ L1 split ล่วงหน้า จึงง่ายและถูกกว่าเมื่องานคาดการณ์ได้ตั้งแต่ต้น</p>
+          <p>ดังนั้นคำตอบไม่ใช่ "M5 ชนะเสมอ" แต่เป็น "อย่า warm session" งานที่รู้ shape ชัดเจนอาจเหมาะกับ M4 แต่ถ้างานเสี่ยงค้นพบความซับซ้อนกลาง sprint M5 ให้ buffer ที่ทำให้ L1 ไม่ถูก surprise ตอน review</p>
+
+          <h2 id="section-5">2b.5 Meta-Lessons</h2>
+          <ol>
+            <li><strong>Designing in doctrine vs measuring in practice:</strong> การ flip หลายครั้งในวันเดียวคือราคาของการออกแบบบนกระดาษ pattern จากระบบหนึ่งอาจแก้ cold-start ของระบบนั้น แต่ fleet นี้ต้องวัดว่า pain จริงคืออะไรใน environment จริง</li>
+            <li><strong>The answer was in our own brain:</strong> บทเรียน cwd-lock มีอยู่ใน memory อยู่แล้วก่อน warm pool ถูกสร้าง การ search record ของตัวเองก่อนทำจึงไม่ใช่พิธีกรรม แต่เป็น guardrail against repeating known mistakes</li>
+            <li><strong>When a human says "I do not understand," suspect the system:</strong> routing เคยบวมเป็นหลายชื่อหลาย mode จนผู้ใช้ไม่เห็นว่าเลือกอะไรดี คำตอบไม่ใช่ diagram สวยขึ้น แต่คือ collapse กลับเป็น SOLO / TEAM ที่ตัดสินได้ในหนึ่งประโยค</li>
+            <li><strong>The lint makes iteration affordable:</strong> ทุก flip แตะ doctrine กว้างมาก ถ้าไม่มี single-source และ fleet-sync lint การเปลี่ยนระบบ 5 ครั้งจะกลายเป็น drift disaster แต่เมื่อ lint ทำให้ rewrite ถูกและเร็ว iteration จึงปลอดภัยขึ้น</li>
+            <li><strong>The human decides (Principle 3):</strong> Oracle มีหน้าที่ mirror reality ให้เห็นครบ ไม่ใช่ override การเลือกของมนุษย์ ถ้ามี counter-evidence ต้องแสดง ไม่ใช่ซ่อนเพื่อให้ architecture ที่ตัวเองชอบชนะ</li>
+          </ol>
+
+          <h2 id="section-6">2b.6 ทำไมผู้ตัดสินใจเลือก 3-layer ทั้งที่มี counter-evidence</h2>
+          <p>จุดสำคัญที่สุดคือการเลือก 3-layer ไม่ได้เกิดจาก ignorance ระบบมี counter-evidence ชัดเจน: M4 ถูกกว่า, relay น้อยกว่า, idle waste เป็นศูนย์ และ maintainability ง่ายกว่าในงานที่รู้ขอบเขตดี แต่ผู้ตัดสินใจยังเลือก M5 เพราะต้องการ orchestration buffer, independent review path และ project-scope injection ที่ predictable สำหรับงานซับซ้อน</p>
+          <p>นี่คือ Principle 3: External Brain, Not Command. Oracle ไม่ได้สั่งว่าคำตอบไหนถูก ไม่ได้ปิดบังข้อเสียของ 3-layer และไม่ได้ force optimization metric เดียว มัน mirror reality: M4 ชนะ resource, M5 ชนะ scalability, M3 แพ้เพราะ stale session, M1 แพ้เพราะ review ไม่อิสระ แล้วให้มนุษย์ผู้ตัดสินใจเลือกจากภาพจริง</p>
+          <p>การเลือก 3-layer จึงเป็น preference ที่ informed แล้ว ไม่ใช่ preference ที่เกิดจากข้อมูลไม่ครบ ระบบยอมรับ pain ของ relay เพราะ pain นั้นมองเห็นได้และแก้ด้วย guard ได้ แต่ context bleed จาก warm session มักมองไม่เห็นจนกระทบงานจริง สำหรับ workflow ที่ต้องรักษา accountability และ merge gate ความเสี่ยงที่มองไม่เห็นแพงกว่าความช้าที่มองเห็น</p>
+          <p>บทนี้จึงไม่ได้บอกว่า 3-layer เป็นคำตอบจักรวาล แต่บอกว่าทำไม Gale Workflow เลือกมันเป็น default: fresh session ต่อ task, worktree แยกต่อ worker, L2 buffer สำหรับ complexity, L1 merge gate สำหรับ accountability และ teardown หลังงานจบเพื่อไม่ให้ context เก่ากลายเป็นทรัพย์สินปลอม</p>
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch02.html">← สถาปัตยกรรม 3 ชั้น</a>
+          <a class="button primary" href="ch03.html">ψ Vault →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>
