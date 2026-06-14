@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ห่วงโซ่ 5 hooks, การเขียน hook เอง และปัญหา PATH/shadow ที่พบบ่อยใน Gale Workflow">
+  <title>Hooks เจาะลึก | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html" class="active" aria-current="page"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 13</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>Hooks เจาะลึก</h1>
+          <p class="chapter-lead">ห่วงโซ่ 5 hooks, การเขียน hook เอง และปัญหา PATH/shadow ที่พบบ่อย</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">13.1 Hooks คืออะไร</h2>
+          <p>
+            Hooks ใน Gale Workflow คือ shell scripts หรือ programs ที่ Claude Code harness เรียกโดยอัตโนมัติ
+            ในจังหวะเฉพาะของ session — ก่อนใช้ tool, หลังใช้ tool, ตอนเริ่ม session หรือตอนหยุด
+            สิ่งสำคัญที่ต้องเข้าใจคือ <strong>harness รัน hook ไม่ใช่ตัวโมเดล (model)</strong>
+          </p>
+          <p>
+            เพราะ harness เป็นผู้รัน hook จึงทำให้ข้อจำกัดที่กำหนดผ่าน hook เป็น hard constraint จริง ๆ
+            โมเดลไม่สามารถ "ตัดสินใจ" ข้ามมันได้ ต่างจาก instruction ใน CLAUDE.md ที่โมเดลอาจตีความผิดได้
+            Hook คือกลไกที่บังคับได้เชิงระบบ (system-enforced)
+          </p>
+          <p>
+            การใช้ hooks ทำให้ผูกพฤติกรรมอัตโนมัติเข้ากับ workflow ได้อย่างน่าเชื่อถือ
+            เช่น ฉีด context ตอนเริ่ม session, บล็อกคำสั่งอันตราย, ส่ง ping เมื่อ session หยุด
+            โดยไม่ต้องพึ่งความจำของโมเดล
+          </p>
+
+          <h2 id="section-2">13.2 ห้า Hooks หลักใน Gale Workflow</h2>
+          <p>
+            ระบบ Gale Workflow ใช้ hooks ห้าตัวหลักที่แต่ละตัวยิงในจังหวะต่างกัน
+            ตารางด้านล่างสรุปชื่อ, event, และหน้าที่ของแต่ละตัว
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Hook</th>
+                <th>Event</th>
+                <th>ยิงเมื่อ</th>
+                <th>หน้าที่หลัก</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>pre-guard.sh</code></td>
+                <td>PreToolUse</td>
+                <td>ก่อนทุก tool call</td>
+                <td>บล็อกคำสั่งอันตราย + TEAM gate</td>
+              </tr>
+              <tr>
+                <td><code>prompt-inject.sh</code></td>
+                <td>SessionStart / UserPromptSubmit</td>
+                <td>เริ่ม session + ทุก prompt</td>
+                <td>ฉีด identity &amp; context, เตือน workflow</td>
+              </tr>
+              <tr>
+                <td><code>post-tool.sh</code></td>
+                <td>PostToolUse</td>
+                <td>หลังทุก tool call สำเร็จ</td>
+                <td>logging, side-effect audit</td>
+              </tr>
+              <tr>
+                <td><code>on-stop.sh</code></td>
+                <td>Stop</td>
+                <td>session หยุด (crash หรือ limit)</td>
+                <td>AUTO DONE-ping safety net</td>
+              </tr>
+              <tr>
+                <td><code>retro-extract.sh</code></td>
+                <td>SessionStart</td>
+                <td>เริ่ม session ใน oracle repo</td>
+                <td>ดึง retro / handoff จาก ψ vault</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            hook หลาย event ยิงต่อกันบน tool call เดียวได้ เช่น <code>pre-guard</code> ยิงก่อน
+            ถ้าผ่าน harness รัน tool จริง แล้ว <code>post-tool</code> ยิงตามมา
+            ถ้า <code>pre-guard</code> return exit code 2 harness บล็อก tool นั้นทันที ไม่รัน tool
+          </p>
+
+          <figure class="figure-card">
+            <div class="mermaid">sequenceDiagram
+  participant M as Model
+  participant H as Harness
+  participant PG as pre-guard.sh
+  participant T as Tool
+  participant PT as post-tool.sh
+
+  M-&gt;&gt;H: Tool call request
+  H-&gt;&gt;PG: PreToolUse event
+  PG--&gt;&gt;H: exit 0 (allow)
+  H-&gt;&gt;T: Execute tool
+  T--&gt;&gt;H: Result
+  H-&gt;&gt;PT: PostToolUse event
+  PT--&gt;&gt;H: exit 0
+  H--&gt;&gt;M: Tool result</div>
+            <figcaption><strong>ภาพที่ 13.1: hook chain บน tool call เดียว</strong><span>pre-guard ยิงก่อน ถ้า exit 2 tool ถูกบล็อก ถ้า exit 0 รัน tool แล้ว post-tool ยิงตาม</span></figcaption>
+          </figure>
+
+          <h2 id="section-3">13.3 pre-guard — บล็อกคำสั่งอันตรายและ TEAM Gate</h2>
+          <p>
+            <code>pre-guard.sh</code> เป็น hook ที่สำคัญที่สุดในระบบ มันยิงทุกครั้งก่อน tool call ใด ๆ
+            หน้าที่หลักสองอย่างคือ: (1) บล็อกคำสั่งที่อันตราย และ (2) บังคับ TEAM routing gate
+          </p>
+          <p>
+            คำสั่งที่บล็อกได้แก่ <code>rm -rf</code> บน path กว้าง, <code>git push --force</code>,
+            <code>git reset --hard</code>, <code>git commit --amend</code>, <code>--no-verify</code>,
+            และ <code>git add -A</code> / <code>git add .</code>
+            แต่ละรายการ blocked ด้วย exit code 2 ซึ่ง harness แปลว่า "ปฏิเสธ tool call นี้"
+          </p>
+          <p>
+            TEAM gate ทำงานอย่างนี้: ถ้า <code>.maw/strategy.json</code> มี <code>route: "TEAM"</code>
+            แต่ยังไม่มี worker spawned อยู่ — <code>pre-guard</code> จะบล็อก Bash/Edit/Write call ใด ๆ
+            บน code files ของ project นั้น เพื่อป้องกัน L2 orchestrator coding เองแทนที่จะ delegate ให้ worker
+          </p>
+
+          <blockquote>
+            <p>
+              TEAM gate มีไว้เพื่อบังคับ architectural rule ที่ว่า "L2 orchestrates, L3 codes"
+              ถ้า L2 อยากแก้โค้ดเองในงานที่ประกาศว่าเป็น TEAM — นั่นคือ signal ว่ากำลังข้ามขั้นตอนที่ตกลงกันไว้
+            </p>
+          </blockquote>
+
+          <h2 id="section-4">13.4 prompt-inject — ฉีด Context และ Identity</h2>
+          <p>
+            <code>prompt-inject.sh</code> ยิงในสองจังหวะ: ตอน SessionStart (เริ่ม session ใหม่)
+            และตอน UserPromptSubmit (ทุกครั้งที่ส่ง prompt)
+            ที่ SessionStart hook นี้ฉีด oracle identity และ project context ลงใน session
+            เพื่อให้โมเดลรู้ว่าตัวเองเป็น oracle ตัวไหน อยู่ใน project อะไร และ role คืออะไร
+          </p>
+          <p>
+            ที่ UserPromptSubmit hook เตือน workflow rule ที่เกี่ยวข้องกับ prompt ที่รับมา
+            เช่น ถ้า prompt ดูเหมือนรายงาน bug — hook แนะนำให้ทำ task intake (gh issue + route)
+            ก่อนลงมือแก้โค้ด
+          </p>
+          <p>
+            กลไกนี้คือสิ่งที่ทำให้ <code>maw workon</code> ทำ "project-scope injection" ได้
+            เมื่อ worktree pane เริ่มขึ้นใน directory ของโปรเจกต์ <code>prompt-inject</code> ที่ SessionStart
+            อ่าน <code>CLAUDE.md</code> / <code>AGENTS.md</code> ของ project นั้นและฉีดเข้า session
+            ทำให้ L2 เริ่มต้นพร้อม context ของ project โดยไม่ต้องอ่านเองด้วยตนเอง
+          </p>
+
+          <h2 id="section-5">13.5 on-stop — AUTO DONE-ping Safety Net</h2>
+          <p>
+            <code>on-stop.sh</code> ยิงเมื่อ session หยุด ไม่ว่าจะจาก context limit, crash, หรือ model switch
+            หน้าที่ของมันคือส่ง AUTO DONE-ping ไปยัง L1 oracle pane ถ้า L2 ยังไม่ได้ส่ง ping เอง
+          </p>
+          <p>
+            กลไกนี้ทำงานผ่าน marker file: ถ้า L2 ส่ง DONE-ping เองสำเร็จแล้วจะสร้างไฟล์ <code>.maw/done-pinged</code>
+            เมื่อ <code>on-stop.sh</code> ยิง มันตรวจว่า marker file มีอยู่ไหม ถ้ามีก็ skip
+            ถ้าไม่มี (L2 ตายก่อนส่ง ping) — hook ส่ง ping อัตโนมัติพร้อม PR/commit details ที่รวบรวมจาก git log
+          </p>
+          <p>
+            สิ่งสำคัญที่ต้องรู้คือ model switch ก็ trigger <code>on-stop</code> เช่นกัน
+            ทำให้บางครั้ง L1 ได้รับ AUTO DONE-ping จาก session ที่ยังไม่ได้ตายจริง ๆ แต่แค่เปลี่ยน model
+            L1 จึงต้องตรวจก่อนว่า pane ยังมีชีวิตอยู่ด้วย <code>maw panes</code> และ <code>maw capture</code>
+            ก่อนจะสรุปว่า L2 ตายแล้ว
+          </p>
+
+          <h2 id="section-6">13.6 retro-extract — ดึง Retro ตอนเริ่ม Session</h2>
+          <p>
+            <code>retro-extract.sh</code> ยิงที่ SessionStart สำหรับ session ที่เปิดใน oracle repo
+            หน้าที่คือดึง retro หรือ handoff notes จาก ψ vault และแสดงผลให้โมเดลเห็นตอนเริ่มต้น
+          </p>
+          <p>
+            สาเหตุที่ต้องทำเช่นนี้คือ ψ vault เก็บ context ระหว่าง session ไว้
+            แต่โมเดลไม่มีความจำข้ามการสนทนา (context window ใหม่ทุก session)
+            <code>retro-extract</code> ทำหน้าที่เป็น "short-term memory loader" ที่นำ context ล่าสุด
+            จากครั้งที่แล้วมาฉีดเข้า session ใหม่โดยอัตโนมัติ
+          </p>
+          <p>
+            hook นี้ทำงานคู่กับ <code>/rrr</code> skill — <code>/rrr</code> เขียน retro ลง ψ vault ตอนจบ session
+            <code>retro-extract</code> ดึงกลับมาตอนเริ่มครั้งถัดไป วงจรนี้คือกลไกที่ทำให้ oracle มี "ความต่อเนื่อง"
+            ข้ามหลาย session ได้โดยไม่ต้องบอกซ้ำทุกครั้ง
+          </p>
+
+          <h2 id="section-7">13.7 เขียน Custom Hook เอง</h2>
+          <p>
+            นอกจาก 5 hooks มาตรฐาน ผู้ใช้สามารถเพิ่ม custom hooks ได้โดยแก้ไขไฟล์ <code>settings.json</code>
+            ของ Claude Code harness (ไม่ใช่ CLAUDE.md) ซึ่ง harness อ่านเพื่อตั้งค่า hook chain
+          </p>
+          <p>
+            โครงสร้าง <code>settings.json</code> สำหรับ hooks มีรูปแบบดังนี้
+            แต่ละ hook ระบุ event ที่ต้องการ, command ที่รัน, และ optional timeout
+          </p>
+
+          <pre><code>{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/pre-guard.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/prompt-inject.sh"
+          },
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/retro-extract.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/user/.claude/hooks/on-stop.sh"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+          <p>
+            Exit code ของ hook script มีความหมายดังนี้:
+          </p>
+          <ul>
+            <li><code>exit 0</code> — อนุญาต (allow) tool call ดำเนินต่อ</li>
+            <li><code>exit 1</code> — error แต่ไม่บล็อก (warning เท่านั้น)</li>
+            <li><code>exit 2</code> — <strong>บล็อก</strong> tool call ทันที harness ไม่รัน tool และส่ง error กลับให้โมเดล</li>
+          </ul>
+
+          <p>
+            ปัญหาที่พบบ่อยในการเขียน custom hook คือ <strong>PATH shadow</strong>
+            hook script รันใน environment ที่อาจมี PATH ต่างจาก interactive shell
+            ถ้าเครื่องมือที่ hook ต้องการ (เช่น <code>ugrep</code>, <code>jq</code>, <code>maw</code>)
+            ไม่อยู่ใน PATH ของ harness — hook จะ fail ด้วย "command not found"
+          </p>
+          <p>
+            วิธีแก้คือ hardcode absolute path ใน hook script เสมอ
+            เช่น <code>/usr/local/bin/jq</code> แทน <code>jq</code> หรือระบุ <code>PATH</code> ใน script ก่อนรัน tool
+            ปัญหา shadow อีกรูปแบบหนึ่งคือมีเครื่องมือชื่อซ้ำใน PATH — เช่น <code>grep</code> ที่ point ไปยัง <code>ugrep</code>
+            ซึ่งมี flag syntax ต่างกัน ทำให้ hook ที่ใช้ <code>grep -P</code> อาจล้มบน system ที่ <code>grep</code> เป็น <code>ugrep</code>
+          </p>
+
+          <pre><code>#!/usr/bin/env bash
+# ตัวอย่าง custom hook: บล็อก direct push to main
+# Event: PreToolUse (Bash)
+
+# Explicit PATH เพื่อหลีก PATH shadow
+export PATH="/usr/local/bin:/usr/bin:/bin"
+
+TOOL_INPUT="$1"
+
+# ตรวจ git push origin main
+if echo "$TOOL_INPUT" | /usr/bin/grep -qE 'git\s+push.*\s+main'; then
+  echo "BLOCKED: direct push to main is not allowed. Use a branch + PR." >&2
+  exit 2
+fi
+
+exit 0</code></pre>
+
+          <h2 id="section-8">สรุปบทที่ 13</h2>
+          <p>
+            Hooks คือ backbone ของ automation ใน Gale Workflow
+            พวกมันทำงานที่ระดับ harness ไม่ใช่ระดับโมเดล ทำให้เป็น hard constraint ที่ bypass ไม่ได้
+            ห้า hooks มาตรฐาน (pre-guard, prompt-inject, post-tool, on-stop, retro-extract)
+            ครอบคลุมทุกจังหวะสำคัญของ session lifecycle
+          </p>
+          <p>
+            <code>pre-guard</code> เป็น safety layer ที่บล็อกคำสั่งอันตรายและบังคับ TEAM routing rule
+            <code>prompt-inject</code> ทำ project-scope injection ที่ทำให้ <code>maw workon</code> เริ่มต้นพร้อม context
+            <code>on-stop</code> เป็น safety net ที่ช่วยให้ L1 ไม่พลาด DONE-ping แม้ L2 ตายกลางทาง
+          </p>
+          <p>
+            เมื่อเขียน custom hook ให้ระวัง PATH shadow เสมอ ใช้ absolute path สำหรับทุก binary ใน hook script
+            และทดสอบ hook ใน environment เดียวกับที่ harness รันจริง ไม่ใช่แค่ใน interactive shell
+          </p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch12.html">← Cross-Language</a>
+          <a class="button primary" href="ch14.html">Fleet &amp; Multi-Oracle →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

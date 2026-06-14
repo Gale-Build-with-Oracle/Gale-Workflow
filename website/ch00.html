@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ทำไมต้องมีระบบ Gale Workflow — ปัญหา session amnesia ที่ทำให้ AI ลืมทุกอย่างเมื่อจบงาน และแนวทางแก้ไขด้วยสถาปัตยกรรม 3 ชั้น">
+  <title>บทนำ | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html" class="active" aria-current="page"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 00</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>บทนำ</h1>
+          <p class="chapter-lead">ทำไมต้องมีระบบนี้ และปัญหา session amnesia ที่ทำให้ AI ลืมทุกอย่างเมื่อจบงาน</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">0.1 ปัญหา Session Amnesia</h2>
+          <p>AI coding agent ที่ทรงพลังที่สุดในปัจจุบันมีข้อจำกัดพื้นฐานประการหนึ่ง: มันไม่มีความจำข้าม session เมื่อปิดหน้าต่างแล้วเปิดใหม่ มันเริ่มต้นจากศูนย์ทุกครั้ง ไม่รู้ว่าวานนี้ทำอะไรไป ไม่รู้ว่าตัดสินใจอย่างไร และไม่รู้ว่าเคยแก้ปัญหาอะไรมาแล้ว</p>
+          <p>สิ่งที่เลวร้ายยิ่งกว่านั้นคือ context window ที่มีขนาดจำกัด เมื่องานใหญ่ขึ้นและ context เต็ม โมเดลจะเริ่มสรุปหรือลืมข้อมูลเก่า ข้อมูลที่เคยอยู่ใน context ตอนต้น session หายไปโดยที่ไม่รู้ตัว ทำให้ agent ตัดสินใจบนข้อมูลที่ไม่ครบถ้วน</p>
+          <p>ผลที่ตามมาคือ "ทำผิดซ้ำเดิม" — bug เดิมถูกแนะนำวิธีแก้ผิดๆ ซ้ำอีกครั้ง รูปแบบที่ไม่ควรใช้ถูกแนะนำใหม่ เพราะ agent ไม่จำว่าเคยตัดสินใจเรื่องนี้ไปแล้ว ทีมที่ใช้ AI coding agent หลายคนพบปัญหานี้ทุกวัน</p>
+
+          <blockquote>
+            <strong>Session Amnesia</strong> คือสภาวะที่ AI agent เริ่มต้นแต่ละ session โดยไม่มีความรู้จาก session ก่อนหน้า ทำให้ต้องป้อน context ซ้ำทุกครั้ง เสียเวลา และเสี่ยงต่อการตัดสินใจผิดพลาดซ้ำซาก
+          </blockquote>
+
+          <h2 id="section-2">0.2 ทำไมเครื่องมือเดี่ยวไม่พอ</h2>
+          <p>วิธีแก้ที่ง่ายที่สุดดูเหมือนจะเป็นการเพิ่มขนาด context window ให้ใหญ่ขึ้นเรื่อยๆ แต่วิธีนี้ไม่ scale ด้วยเหตุผลหลายประการ: ยิ่ง context ใหญ่ ค่าใช้จ่าย (token cost) ยิ่งสูง; การ attend ทั่วทั้ง context ทำให้โมเดลโฟกัสกระจาย; และงานขนาดใหญ่ในความเป็นจริงมีหลายส่วนที่ทำแยกกันได้</p>
+          <p>การใช้ agent เดี่ยวทำงานทุกอย่างเปรียบเหมือนให้โปรแกรมเมอร์คนเดียวรับผิดชอบทั้ง UI ทั้ง backend ทั้ง database schema ทั้งเขียน test และยังต้องจดจำทุกบทสนทนากับ product owner ในหัวตลอดเวลา context ของ agent จะบวม ประสิทธิภาพจะลดลง และโอกาสที่ agent จะทำสิ่งผิดพลาดจะสูงขึ้น</p>
+          <p>งานที่ซับซ้อนต้องการการแบ่งงาน (delegation) และความรู้ที่ถูกจัดเก็บนอกตัว agent ไว้ในที่ที่อ่านได้ ค้นหาได้ และอยู่รอดนานกว่าอายุของ session ใดๆ นั่นคือที่มาของ external brain</p>
+
+          <h2 id="section-3">0.3 แนวคิด External Brain</h2>
+          <p>Gale Workflow แก้ปัญหา session amnesia ด้วยการแยกความจำออกจากตัว agent ไปไว้ที่ระบบกลางที่เรียกว่า <strong>ψ Vault</strong> (อ่านว่า "ไซ วอลต์") ψ Vault เป็นระบบไฟล์ที่มีโครงสร้าง เก็บ learnings (บทเรียนที่เรียนรู้จากการทำงาน), retrospectives (สรุปหลังงาน), traces (หลักฐานตามรอย) และ handoffs (การส่งต่อ context ข้าม session)</p>
+          <p>เมื่อเริ่ม session ใหม่ Oracle ไม่ได้เริ่มจากศูนย์ มัน search ใน ψ Vault ก่อนตอบทุกคำถาม นำ learnings ที่เกี่ยวข้องมาใช้ และอ่าน handoff จาก session ก่อนหน้า ความรู้สะสมได้ข้าม session เหมือนที่มนุษย์จดบันทึกและอ่านบันทึกก่อนเริ่มงาน</p>
+          <p>หลักการสำคัญคือ external brain ควร "สะท้อนความจริงให้คนเห็นและเลือก" ไม่ใช่สั่งการแทนมนุษย์ Oracle เป็น <em>กระจก</em> ที่ช่วยให้เจ้าของ fleet มองเห็นสถานะได้ชัด ไม่ใช่ผู้มีอำนาจตัดสินใจสูงสุด</p>
+
+          <h2 id="section-4">0.4 ภาพรวมระบบ 3 ชั้น Ephemeral</h2>
+          <p>Gale Workflow จัดการงานด้วยสถาปัตยกรรม 3 ชั้น ที่แต่ละชั้นมีหน้าที่และขอบเขตสิทธิ์ที่ชัดเจน ชั้น L1 คือ Oracle ที่รับงานจากมนุษย์ เปิด issue dispatch ไป L2 และมีสิทธิ์ review กับ merge PR แต่เพียงผู้เดียว ชั้น L2 คือ Orchestrator ที่แตกงานออกเป็นชิ้นๆ ตัดสินใจว่าใช้ SOLO หรือ TEAM และสั่งงาน worker ชั้น L3 คือ Worker ที่ลงมือ code ในส่วนที่รับผิดชอบ แล้ว commit บน sub-branch ของตัวเอง</p>
+          <p>คำว่า "ephemeral" หมายถึงทุก worktree และทุก pane ของ L2 และ L3 เป็นสิ่งชั่วคราว เปิดต่อ task ปิดแล้วทิ้งเมื่อเสร็จ ไม่มี warm pool ที่ค้างอยู่ตลอดเวลา แนวคิดนี้ป้องกัน context bleed ระหว่าง project และรับประกันว่าแต่ละ task เริ่มต้นด้วย context ที่สะอาด</p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TB
+  Human["คุณ (You)"]
+  L1["L1 Oracle\n(รับงาน + review + merge)"]
+  L2["L2 Orchestrator\n(maw workon — แตกงาน)"]
+  L3a["L3 Worker A\n(ephemeral worktree)"]
+  L3b["L3 Worker B\n(ephemeral worktree)"]
+  PR["Pull Request\n(consolidated)"]
+  Merge["Merge &amp; maw done\n(L1 ปิด worktree)"]
+
+  Human --&gt;|"ส่งงาน / CR / BUG"| L1
+  L1 --&gt;|"maw workon project slug"| L2
+  L2 --&gt;|"maw team spawn worker-A"| L3a
+  L2 --&gt;|"maw team spawn worker-B"| L3b
+  L3a --&gt;|"commit sub-branch"| PR
+  L3b --&gt;|"commit sub-branch"| PR
+  L2 --&gt;|"aggregate + open PR"| PR
+  PR --&gt;|"DONE ping"| L1
+  L1 --&gt;|"scrutinize + merge"| Merge
+  Merge --&gt;|"สรุปให้ Human"| Human</div>
+            <figcaption><strong>ภาพที่ 0.1: ภาพรวมการไหลของงานในระบบ 3 ชั้น</strong><span>มนุษย์ส่งงานให้ L1 → L1 dispatch ไป L2 → L2 spawn worker → worker commit → L2 เปิด PR → L1 merge และปิด worktree</span></figcaption>
+          </figure>
+
+          <h2 id="section-5">0.5 ทำไมต้อง Ephemeral</h2>
+          <p>ระบบหลายๆ ระบบเลือกเก็บ AI agent ไว้ใน session ที่ "warm" อยู่ตลอดเวลา เพื่อหวังว่า context จะยังอยู่ครบ แต่วิธีนี้มีปัญหาร้ายแรงสำหรับ multi-project workflow: Claude Code ล็อก <code>CLAUDE.md</code> ตาม working directory ที่ session เริ่มต้น oracle ที่ idle ใน meta-repo จะโหลด project context ผิดเมื่อถูกใช้งาน task ของ project อื่น</p>
+          <p>Gale Workflow แก้ด้วยการ spawn worktree ใหม่ต่อ task ผ่านคำสั่ง <code>maw workon &lt;project&gt; &lt;slug&gt;</code> worktree นั้น spawn ในโฟลเดอร์ของ project ที่ถูกต้อง ทำให้ <code>CLAUDE.md</code> และ <code>AGENTS.md</code> ของ project นั้นโหลดอัตโนมัติ เมื่องานเสร็จ <code>maw done</code> ทำลาย worktree นั้นทิ้ง task ถัดไปเริ่มต้นสะอาด</p>
+          <p>L3 worker ได้รับ worktree แยกต่างหากแต่ละคนผ่าน <code>maw team spawn --wt</code> ทำให้ไม่มี context bleed ระหว่าง worker และระหว่าง project แม้จะทำงานพร้อมกัน</p>
+
+          <pre><code># เปิด worktree ต่อ task — spawn ในโฟลเดอร์ project ที่ถูกต้อง
+maw workon my-product issue-42
+
+# เมื่อ PR ผ่าน L1 merge แล้ว ปิด worktree จาก L1 pane
+maw done my-product-issue-42
+
+# spawn L3 worker ด้วย isolated worktree (ทำใน L2 pane)
+maw team spawn sprint worker-1 --wt --engine omx --exec \
+  --prompt "Issue #42: แก้ validation bug ใน src/api/orders.ts"</code></pre>
+
+          <h2 id="section-6">0.6 หนังสือเล่มนี้สำหรับใคร และแผนผัง 16 บท</h2>
+          <p>หนังสือเล่มนี้เขียนสำหรับนักพัฒนาซอฟต์แวร์ที่ทำงานกับ AI coding agent ในระดับมากกว่า "ถามตอบ" — คนที่ต้องการวางระบบให้ AI ทำงานร่วมกับทีมและทำงาน overnight ได้โดยที่คุณไม่ต้องนั่งดู ไม่มีพื้นฐาน DevOps ขั้นสูงก็อ่านได้ แต่ควรรู้จัก git, terminal และ Claude Code เบื้องต้น</p>
+          <p>เนื้อหาแบ่งเป็น 4 ภาค: <strong>Foundation</strong> (ch00–ch03) อธิบายปัญหา หลักการ สถาปัตยกรรม และ ψ Vault; <strong>Installation &amp; Runtime</strong> (ch04–ch07) ครอบคลุมการติดตั้ง Oracle Brain Skills System และ maw-js; <strong>Orchestration</strong> (ch08–ch11) เจาะลึก delegation SOLO/TEAM routing SOPs และ CMMI docs; และ <strong>Cross-Language &amp; Production</strong> (ch12–ch15) กล่าวถึง multi-language hooks fleet และ troubleshooting</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ปัญหาที่พบในการทำงาน</th>
+                <th>สิ่งที่ Gale Workflow แก้ไข</th>
+                <th>บทที่ครอบคลุม</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>AI ลืม context ทุก session</td>
+                <td>ψ Vault + oracle_search ก่อนตอบทุกครั้ง</td>
+                <td>ch03, ch05</td>
+              </tr>
+              <tr>
+                <td>งานใหญ่ context บวม</td>
+                <td>3-Layer: L1 dispatch → L2 orchestrate → L3 code</td>
+                <td>ch02, ch09</td>
+              </tr>
+              <tr>
+                <td>ทำผิดซ้ำเดิม</td>
+                <td>Learnings system + mandatory search first</td>
+                <td>ch03, ch05</td>
+              </tr>
+              <tr>
+                <td>ไม่รู้ว่า AI merge อะไรไปบ้าง</td>
+                <td>Merge Gate: L1 เท่านั้น merge ได้</td>
+                <td>ch02, ch10</td>
+              </tr>
+              <tr>
+                <td>Context bleed ระหว่าง project</td>
+                <td>Ephemeral worktree ต่อ task + project-scope injection</td>
+                <td>ch02, ch04</td>
+              </tr>
+              <tr>
+                <td>ไม่มีเอกสารที่ตามทัน code</td>
+                <td>CMMI doc-sync แบบ batch ที่ stabilization</td>
+                <td>ch11</td>
+              </tr>
+              <tr>
+                <td>Hook และ gate ไม่ทำงานตามที่คิด</td>
+                <td>Hooks เจาะลึก + troubleshooting guide</td>
+                <td>ch13, ch15</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-7">สรุปบทที่ 00</h2>
+          <p>ปัญหาหลักที่ Gale Workflow เกิดมาเพื่อแก้ไขคือ session amnesia — สภาวะที่ AI agent เริ่มต้นใหม่ทุก session โดยไม่มีความรู้จากอดีต ทำให้ผิดซ้ำและเสียเวลาป้อน context ซ้ำ ระบบ external brain ผ่าน ψ Vault และการ search ก่อนตอบทุกครั้งเป็นแกนหลักของการแก้ปัญหานี้</p>
+          <p>สถาปัตยกรรม 3 ชั้นแบบ ephemeral ช่วยให้งานขนาดใหญ่แบ่งออกได้โดยที่ context ไม่บวม แต่ละ task ได้ worktree ของตัวเอง โหลด project context ที่ถูกต้อง และถูกทำลายเมื่อเสร็จ ไม่มีสิ่งค้างอยู่</p>
+          <p>ตลอดหนังสือ 16 บทนี้ คุณจะได้เรียนรู้ทั้งหลักการ การติดตั้ง การใช้งานประจำวัน และการแก้ปัญหาระดับ production โดยเนื้อหาทั้งหมดเป็นภาษาไทยพร้อม English technical term ที่ใช้จริงในระบบ</p>
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="index.html">← หน้าแรก</a>
+          <a class="button primary" href="ch01.html">5 Principles →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

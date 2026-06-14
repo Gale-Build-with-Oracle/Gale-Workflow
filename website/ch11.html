@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CMMI และ Docs ใน Gale Workflow: ชุดเอกสาร 7 ไฟล์แบนราบ, REQ traceability thread และ doc-sync แบบ batch">
+  <title>CMMI &amp; Docs | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html" class="active" aria-current="page"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 11</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>CMMI &amp; Docs</h1>
+          <p class="chapter-lead">ชุดเอกสาร 7 ไฟล์แบนราบสำหรับทุกโปรเจกต์, REQ traceability thread ที่เชื่อมจาก requirement ถึง PR SHA และ doc-sync แบบ batch ที่ต้องรันก่อน UAT และก่อน release</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">11.1 มาตรฐานเอกสาร: ชุดแบนราบ 7 ไฟล์</h2>
+          <p>Gale Workflow ใช้มาตรฐานเอกสารที่เรียบง่าย: ทุกโปรเจกต์มีชุดเอกสารเดียวกัน 7 ไฟล์ วางในโฟลเดอร์ <code>docs/</code> แบบแบนราบ ไม่มีการแบ่ง tier ตามขนาดของโปรเจกต์ ไม่มีโฟลเดอร์ซ้อนกัน ไม่มีเอกสารพิเศษสำหรับโปรเจกต์บางประเภท ทุกโปรเจกต์เหมือนกัน</p>
+          <p>แนวคิดนี้มาจากการสังเกตว่าความซับซ้อนของโครงสร้างเอกสาร (tier, subfolder, cross-reference ระหว่างไฟล์) มักเป็นอุปสรรคมากกว่าประโยชน์ ชุด 7 ไฟล์แบนราบให้ข้อมูลครบถ้วนสำหรับทุก phase ของ SDLC ตั้งแต่ requirement จนถึง deployment และ risk management</p>
+          <p>การสร้างโครงสร้างเอกสารครั้งแรกใช้ fleet script:</p>
+
+          <pre><code># สร้างโครงสร้างเอกสารครั้งแรก (สำหรับโปรเจกต์ใหม่)
+bash ~/ghq/github.com/&lt;your-github-user&gt;/Gale-Framework/scripts/init-project-docs.sh YourProject
+
+# output:
+# docs/SRS.md        — Software Requirements Specification
+# docs/SDD.md        — Software Design Document (generated)
+# docs/UAT.md        — User Acceptance Test plan
+# docs/CR.md         — Change Request log
+# docs/RISK.md       — Risk register
+# docs/UXUI.md       — UX/UI decisions
+# docs/TAILORING.md  — project-specific tailoring decisions
+# docs/.last-doc-sync — marker สำหรับ doc-sync</code></pre>
+
+          <h2 id="section-2">11.2 เอกสาร 7 ไฟล์: แต่ละไฟล์เก็บอะไร</h2>
+          <p>ทำความเข้าใจบทบาทของแต่ละไฟล์ช่วยป้องกันการซ้ำซ้อนและทำให้รู้ว่าควรอัปเดตไฟล์ไหนเมื่อใด หลักการสำคัญ: แต่ละ requirement เขียนเพียงครั้งเดียวใน SRS ไฟล์อื่นอ้างอิงด้วย REQ-id ไม่ใช่เขียนซ้ำ</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ไฟล์</th>
+                <th>เก็บอะไร</th>
+                <th>อัปเดตเมื่อ</th>
+                <th>หมายเหตุ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>SRS.md</code></td>
+                <td>Software Requirements — functional + non-functional; แต่ละ REQ-id นิยามไว้ที่นี่เพียงแห่งเดียว</td>
+                <td>doc-sync (batch)</td>
+                <td>Living doc; append-only</td>
+              </tr>
+              <tr>
+                <td><code>SDD.md</code></td>
+                <td>Software Design — architecture, module map, data flow; generated จาก code + PR history</td>
+                <td>เฉพาะเมื่อ release, audit หรือ onboarding</td>
+                <td>Generated ไม่ใช่ maintained</td>
+              </tr>
+              <tr>
+                <td><code>UAT.md</code></td>
+                <td>User Acceptance Test plan — test case ต่อ REQ-id, ผลลัพธ์, PR SHA</td>
+                <td>doc-sync ก่อน UAT session</td>
+                <td>REQ-id → code → UAT → PR SHA</td>
+              </tr>
+              <tr>
+                <td><code>CR.md</code></td>
+                <td>Change Request log — ทุก CR/BUG issue ที่ merge แล้ว, PR number, วันที่</td>
+                <td>doc-sync (batch)</td>
+                <td>Append-only</td>
+              </tr>
+              <tr>
+                <td><code>RISK.md</code></td>
+                <td>Risk register — ความเสี่ยง, likelihood, impact, mitigation plan</td>
+                <td>doc-sync เมื่อมี risk ใหม่จาก PR</td>
+                <td>Living doc</td>
+              </tr>
+              <tr>
+                <td><code>UXUI.md</code></td>
+                <td>UX/UI decisions — design system choices, component patterns, accessibility notes</td>
+                <td>doc-sync เมื่อมี UI change จาก PR</td>
+                <td>Living doc</td>
+              </tr>
+              <tr>
+                <td><code>TAILORING.md</code></td>
+                <td>Project-specific tailoring — การปรับใช้ CMMI สำหรับ project นี้โดยเฉพาะ</td>
+                <td>ต้นโปรเจกต์ + อัปเดตเมื่อ policy เปลี่ยน</td>
+                <td>อ่าน Gale-Framework/templates/org/TAILORING.md เป็น base</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-3">11.3 REQ traceability thread</h2>
+          <p>REQ traceability thread คือเส้นเชื่อมที่รับรองว่าทุก requirement สามารถตามได้จากต้นน้ำถึงปลายน้ำ: <strong>REQ-id → code → UAT test case → PR SHA</strong> ไม่มี RTM (Requirements Traceability Matrix) แยกต่างหาก เพราะการเชื่อมทั้งหมดฝังอยู่ใน PR description ผ่าน REQ line และใน UAT.md ผ่าน REQ-id column</p>
+          <p>ตัวอย่าง traceability chain ที่สมบูรณ์:</p>
+          <ul>
+            <li><code>SRS.md</code>: <code>REQ-PROJ-042: ระบบต้องรองรับ rate limiting 100 requests/minute ต่อ user</code></li>
+            <li><code>src/auth/rateLimiter.ts</code>: implement rate limiting logic</li>
+            <li><code>PR #35 description</code>: <code>REQ: REQ-PROJ-042</code> และ <code>Closes #30</code></li>
+            <li><code>UAT.md</code>: row สำหรับ REQ-PROJ-042 ที่มี test case, วันที่ test, ผลลัพธ์ และ PR SHA #35</li>
+          </ul>
+          <p>เมื่อมี audit หรือต้องการรู้ว่า REQ ไหนถูก implement ใน PR ไหน ค้นหาแค่ REQ-id ในไฟล์ 4 แหล่งนี้ ไม่ต้องมีเอกสารพิเศษเพิ่มเติม</p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart LR
+  REQ["SRS.md\nREQ-PROJ-042"]
+  CODE["code\nrateLimiter.ts"]
+  PR["PR #35\nREQ: REQ-PROJ-042\nCloses #30"]
+  UAT["UAT.md\nREQ-PROJ-042 row\nPR SHA #35"]
+
+  REQ --&gt; CODE
+  CODE --&gt; PR
+  PR --&gt; UAT
+  REQ -. "REQ-id อ้างอิง" .- UAT</div>
+            <figcaption><strong>ภาพที่ 11.1: REQ traceability thread</strong><span>ทุก requirement ตามได้ตั้งแต่ SRS ผ่าน code และ PR SHA จนถึง UAT</span></figcaption>
+          </figure>
+
+          <h2 id="section-4">11.4 Per-PR REQ line: ทุก feature PR ต้องมี</h2>
+          <p>กฎนี้บังคับสำหรับทุก feature PR: <strong>ต้องมีบรรทัด REQ ใน PR description</strong> <code>/sop-qa</code> ตรวจไฟล์นี้เป็น gate ระดับ P2 (warning ที่ควรแก้ก่อน merge) บรรทัด REQ มีสองรูปแบบ:</p>
+          <ul>
+            <li><code>REQ: REQ-PROJ-042</code> สำหรับ feature/fix ที่ตอบสนอง requirement ที่มีอยู่</li>
+            <li><code>REQ: REQ-PROJ-042, REQ-PROJ-043</code> สำหรับ PR ที่แก้หลาย requirement</li>
+            <li><code>REQ: none</code> สำหรับ refactor, dependency update, cosmetic หรืองานที่ไม่เปลี่ยน contract ใดๆ</li>
+          </ul>
+          <p>ข้อห้ามสำคัญ: <strong>feature PR ห้ามแก้ไขไฟล์ใดๆ ใน <code>docs/</code></strong> การแก้ docs ใน feature PR ทำให้ traceability พัง เพราะ doc-sync ออกแบบมาให้ sync เฉพาะ merged PR ที่ผ่าน gate แล้ว ไม่ใช่ sync จาก in-progress feature</p>
+
+          <pre><code"># ตัวอย่าง PR description ที่ถูกต้อง
+
+## Summary
+- เพิ่ม rate limiting middleware ใน auth layer
+- รองรับ 100 requests/minute ต่อ user
+- เขียน unit test ครอบคลุม edge cases
+
+REQ: REQ-PROJ-042
+Closes #30
+
+## Test Plan
+- [x] unit test: rate limiter logic (15 cases)
+- [x] integration test: auth middleware chain
+- [ ] UAT: manual test ใน staging environment
+
+---
+
+# ตัวอย่าง PR ประเภท refactor (ไม่มี REQ)
+## Summary
+- Refactor rate limiter ให้ใช้ Redis แทน in-memory store
+- ไม่เปลี่ยน API contract หรือ behavior ใดๆ
+
+REQ: none
+Closes #31</code></pre>
+
+          <h2 id="section-5">11.5 doc-sync: batch update ที่ stabilization</h2>
+          <p>doc-sync คือกระบวนการที่รวมการอัปเดตเอกสารทั้งหมดไว้ที่จุด stabilization — ไม่ใช่ per-PR ระบบนี้ป้องกันการ interrupt งาน feature coding ด้วยงานเอกสาร และทำให้เอกสารอัปเดตเป็น batch ที่มีความหมายมากกว่า</p>
+          <p><strong>doc-sync ต้องรัน 2 กรณีบังคับ:</strong> ก่อน UAT session ทุกครั้ง และก่อน release/deploy ทุกครั้ง การ release โดยไม่รัน doc-sync ถือว่าผิด gate ระดับ P1 ซึ่ง <code>/sop-qa</code> จะบล็อก</p>
+
+          <pre><code># marker file ที่ doc-sync ใช้ติดตาม
+# docs/.last-doc-sync เก็บ SHA ของ merge commit ล่าสุดที่ sync แล้ว
+cat docs/.last-doc-sync
+# output: abc1234def5678  (commit SHA)
+
+# doc-sync อ่าน PR ที่ merge ตั้งแต่ SHA นี้
+# แล้วอัปเดต SRS, UAT, CR (และ RISK, UXUI ถ้ามีการเปลี่ยนแปลง)
+# จบด้วยการ advance marker ไปที่ commit ล่าสุด
+
+# รัน doc-sync (ผ่าน skill)
+# /doc-sync
+
+# doc-sync จะ:
+# 1. อ่าน merged PRs ตั้งแต่ .last-doc-sync SHA
+# 2. spawn haiku agents (1 ตัวต่อ 1 ไฟล์)
+# 3. อัปเดต SRS/UAT/CR/RISK/UXUI
+# 4. เปิด docs-only PR (low-risk → L1 self-merge)
+# 5. advance .last-doc-sync ไปที่ SHA ล่าสุด</code></pre>
+
+          <p>doc-sync เปิด PR แยกที่เรียกว่า "docs-only PR" ซึ่ง L1 สามารถ self-merge ได้หลัง quick scrutiny เพราะ PR นี้ไม่แตะ code เลย — มีแต่การอัปเดต docs/ เท่านั้น</p>
+
+          <h2 id="section-6">11.6 Living docs: append/patch ไม่ regenerate</h2>
+          <p>หลักการ "living docs" หมายความว่า SRS.md, UAT.md และ CR.md เป็นเอกสารที่เพิ่มเนื้อหาตลอดเวลา ไม่ใช่ regenerate ใหม่ทุกครั้ง Gale Workflow ยึด Principle ที่ 1 (Nothing is Deleted): history ของ requirement และ decision ต้องอยู่ในเอกสาร ไม่ใช่ถูก overwrite ด้วยสถานะปัจจุบัน</p>
+          <p>กฎการ append/patch:</p>
+          <ul>
+            <li><strong>SRS.md</strong>: เพิ่ม REQ ใหม่ท้ายไฟล์; ถ้า REQ เปลี่ยน ให้ mark เป็น "superseded by REQ-PROJ-NNN" แล้วเพิ่ม requirement ใหม่ ไม่ใช่แก้ requirement เดิม</li>
+            <li><strong>UAT.md</strong>: เพิ่ม row ใหม่สำหรับ test ใหม่; อัปเดต status ของ row เดิมได้ (pass/fail/retested)</li>
+            <li><strong>CR.md</strong>: append-only เสมอ — ทุก CR/BUG ที่ merge บันทึกเป็น row ใหม่</li>
+          </ul>
+          <p>SDD.md เป็นข้อยกเว้นเดียว: SDD เป็น generated document ที่สร้างจาก code + PR history เฉพาะเมื่อจำเป็น (release, audit, onboarding คนใหม่) SDD ไม่ใช่ living doc ที่ maintain ต่อเนื่อง version เก่าของ SDD ยังอยู่ใน git history ตาม Principle 1</p>
+
+          <pre><code"># ตัวอย่างการ append REQ ใน SRS.md (ถูกต้อง)
+# ไม่แก้ requirement เดิม — เพิ่มที่ท้าย
+
+## REQ-PROJ-042 (superseded)
+> Superseded by REQ-PROJ-042b (2026-05-20)
+
+ระบบต้องรองรับ rate limiting 100 requests/minute ต่อ user (in-memory)
+
+## REQ-PROJ-042b
+ระบบต้องรองรับ rate limiting 100 requests/minute ต่อ user
+โดยใช้ Redis backend เพื่อรองรับ multi-instance deployment
+
+*Supersedes: REQ-PROJ-042*
+*PR: #45 (2026-05-20)*</code></pre>
+
+          <h2 id="section-7">11.7 haiku สำหรับงานเอกสาร</h2>
+          <p>doc-sync ใช้ haiku model (Claude Haiku) ไม่ใช่ Opus/Sonnet เหตุผลชัดเจน: งานเอกสารเป็นงาน structured formatting — อ่าน PR description, แยก REQ line, append ใน template ที่กำหนดไว้แล้ว งานนี้ไม่ต้องการ reasoning เชิงลึก haiku ทำได้เร็วกว่า 10 เท่าด้วยต้นทุนต่ำกว่ามาก</p>
+          <p>รูปแบบ: doc-sync spawn haiku subagents แบบ parallel — 1 agent ต่อ 1 ไฟล์เอกสาร (SRS agent, UAT agent, CR agent, RISK agent, UXUI agent) ทำงานพร้อมกัน แล้ว orchestrator รวม output ทั้งหมดเป็น docs-only PR เดียว กระบวนการนี้เสร็จใน 2-3 นาทีสำหรับ sprint ปกติ</p>
+          <p>กฎ: งานเอกสารทั้งหมดเป็นงาน haiku เสมอ Opus ไม่ควรเขียนเอกสาร CMMI — นี่คือ waste ที่ไม่จำเป็น ถ้าใช้ Codex ให้ hand off งานเอกสารให้ haiku subagent</p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TB
+  SYNC([doc-sync trigger]) --&gt; READ[อ่าน merged PRs\nตั้งแต่ .last-doc-sync]
+  READ --&gt; SPAWN[spawn haiku agents\n1 ตัวต่อ 1 ไฟล์]
+  SPAWN --&gt; H1[haiku: SRS.md]
+  SPAWN --&gt; H2[haiku: UAT.md]
+  SPAWN --&gt; H3[haiku: CR.md]
+  SPAWN --&gt; H4[haiku: RISK.md]
+  SPAWN --&gt; H5[haiku: UXUI.md]
+  H1 --&gt; AGG[รวม output]
+  H2 --&gt; AGG
+  H3 --&gt; AGG
+  H4 --&gt; AGG
+  H5 --&gt; AGG
+  AGG --&gt; PR[docs-only PR]
+  PR --&gt; MERGE[L1 quick scrutinize + merge]
+  MERGE --&gt; MARKER[advance .last-doc-sync]</div>
+            <figcaption><strong>ภาพที่ 11.2: doc-sync กระบวนการ</strong><span>haiku agents ทำงานคู่ขนาน ผลรวมเป็น docs-only PR ที่ L1 merge</span></figcaption>
+          </figure>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Model</th>
+                <th>ใช้เมื่อ</th>
+                <th>เหตุผล</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Claude Opus/Sonnet (L1/L2)</td>
+                <td>orchestration, routing, scrutiny, complex reasoning</td>
+                <td>ต้องการ reasoning เชิงลึก</td>
+              </tr>
+              <tr>
+                <td>OMX/Codex (L3 workers)</td>
+                <td>feature coding, bug fix, test writing</td>
+                <td>execution-focused, isolated</td>
+              </tr>
+              <tr>
+                <td>Claude Haiku</td>
+                <td>doc-sync, doc review, structured formatting</td>
+                <td>เร็ว, ถูก, เพียงพอสำหรับงาน structured</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-8">11.8 สรุปบทที่ 11</h2>
+          <p>CMMI &amp; Docs ใน Gale Workflow ออกแบบให้เรียบง่ายและ sustainable ชุด 7 ไฟล์แบนราบให้ข้อมูลครบสำหรับทุก phase, REQ traceability thread เชื่อมทุกอย่างโดยไม่ต้องมีเอกสารพิเศษเพิ่ม และ doc-sync แบบ batch ทำให้ทีมมั่นใจว่าเอกสารตรงกับโค้ดก่อน UAT และ release</p>
+          <p>กฎที่ต้องจำ: feature PR มีแค่ REQ line ไม่มีการแก้ docs; docs อัปเดต batch ด้วย haiku agents; SRS/UAT/CR เป็น living docs ที่ append ไม่ใช่ overwrite; SDD เป็น generated snapshot ไม่ใช่ maintained doc doc-sync ต้องรันก่อน UAT และก่อน release เสมอ</p>
+          <p>ระบบนี้ทำให้ทีมใช้เวลาน้อยมากกับการ maintain เอกสาร (haiku ทำแทน) แต่ได้ traceability ที่ครบถ้วนและ audit-ready ตลอดเวลา บทถัดไปครอบคลุม Cross-Language support — การทำงานกับ stack ต่างๆ จาก Rust, Python, TypeScript ถึง SQL ใน Gale Workflow</p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch10.html">← SOPs &amp; Merge Gate</a>
+          <a class="button primary" href="ch12.html">Cross-Language →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

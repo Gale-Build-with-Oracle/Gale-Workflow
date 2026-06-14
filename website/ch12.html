@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="เลเยอร์ workflow ไม่ผูกภาษา — ตัวอย่าง Python/Go/Rust/TypeScript และ Docker rebuild หลัง merge">
+  <title>Cross-Language | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html" class="active" aria-current="page"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 12</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>Cross-Language</h1>
+          <p class="chapter-lead">เลเยอร์ workflow ไม่ผูกภาษา — ตัวอย่าง Python/Go/Rust/TypeScript และ Docker rebuild หลัง merge</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">12.1 Workflow Layer เป็น Language-Agnostic</h2>
+          <p>
+            หัวใจของ Gale Workflow คือ orchestration layer ที่แยกออกจากภาษาโปรแกรมของโปรเจกต์อย่างสิ้นเชิง
+            ไม่ว่าโปรเจกต์จะเขียนด้วย Python, Go, Rust, TypeScript หรือภาษาอื่นใด
+            กระบวนการ L1 → L2 → L3 ยังคงเหมือนเดิมทุกประการ
+          </p>
+          <p>
+            สิ่งที่เปลี่ยนไปตามภาษาคือ "คำสั่ง verify" ที่ worker แต่ละตัวรันก่อน commit เท่านั้น
+            ระบบไม่บังคับ toolchain ใด ๆ กับ worker — worker รับผิดชอบ verify slice ของตัวเองด้วยเครื่องมือที่ภาษานั้นใช้ตามธรรมชาติ
+            เช่น <code>pytest</code> สำหรับ Python, <code>cargo test</code> สำหรับ Rust
+          </p>
+          <p>
+            แนวคิดนี้ทำให้สามารถมีโปรเจกต์ monorepo ที่มีหลายภาษาอยู่ในทีมเดียวกันได้
+            Worker A รับผิดชอบ backend (Go) ส่วน Worker B รับผิดชอบ scripts (Python) โดยแต่ละคนใช้ verify command ของตัวเอง
+            แล้วผลลัพธ์มารวมกันในขั้นตอน aggregate ของ L2
+          </p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TB
+  subgraph L2["L2 Orchestrator"]
+    A[รับ task] --&gt; B[แบ่ง slice]
+    B --&gt; C[spawn workers]
+  end
+  subgraph W1["Worker 1 — Python"]
+    D[แก้โค้ด] --&gt; E[pytest + ruff]
+    E --&gt; F[commit]
+  end
+  subgraph W2["Worker 2 — Go"]
+    G[แก้โค้ด] --&gt; H[go build + go test]
+    H --&gt; I[commit]
+  end
+  subgraph W3["Worker 3 — Rust"]
+    J[แก้โค้ด] --&gt; K[cargo build + cargo test]
+    K --&gt; L[commit]
+  end
+  C --&gt; D
+  C --&gt; G
+  C --&gt; J
+  F --&gt; M[aggregate]
+  I --&gt; M
+  L --&gt; M
+  M --&gt; N[PR]</div>
+            <figcaption><strong>ภาพที่ 12.1: worker แต่ละตัว verify ด้วยภาษาของตัวเอง</strong><span>ระบบ orchestration ไม่เปลี่ยน มีแค่คำสั่ง verify ที่ต่างกัน</span></figcaption>
+          </figure>
+
+          <h2 id="section-2">12.2 Python — pytest และ ruff</h2>
+          <p>
+            โปรเจกต์ Python มักใช้ <code>pytest</code> เป็น test runner และ <code>ruff</code> เป็น linter ที่เร็วและครอบคลุม
+            worker ควรรันทั้งสองขั้นตอนก่อน commit เสมอ เพราะ lint error เล็ก ๆ อาจทำให้ CI ล้มและบล็อก PR ของทีม
+          </p>
+          <p>
+            หากโปรเจกต์ใช้ virtual environment ควรระบุ path ให้ชัดเจนหรือ activate venv ก่อน
+            ใน worktree แยกต่าง ๆ ควรสร้าง venv ใหม่หรือใช้ <code>uv venv</code> เพื่อให้ deps ไม่ชนกันระหว่าง worker
+          </p>
+
+          <pre><code># Worker verify slice — Python
+# 1. ติดตั้ง deps (ถ้ายังไม่ติดตั้ง)
+pip install -e ".[dev]"
+
+# 2. Lint ด้วย ruff
+ruff check src/ tests/
+
+# 3. Type check (optional แต่แนะนำ)
+mypy src/ --ignore-missing-imports
+
+# 4. รัน tests ที่เกี่ยวกับ slice ของตัวเอง
+pytest tests/unit/ -v --tb=short
+
+# ถ้า pass ทั้งหมด — commit
+git add src/my_module.py tests/test_my_module.py
+git commit -m "feat: implement my-module slice"</code></pre>
+
+          <p>
+            การรัน <code>pytest</code> เฉพาะส่วนที่ตัวเองแก้ (ไม่ใช่ทั้งหมด) ช่วยประหยัดเวลา
+            แต่ L2 orchestrator ควรรัน full test suite ในขั้นตอน aggregate verify ก่อนเปิด PR เพื่อความมั่นใจ
+          </p>
+
+          <h2 id="section-3">12.3 Go — go build และ go test</h2>
+          <p>
+            Go มีคำสั่ง build และ test ที่ค่อนข้าง standard ไม่ซับซ้อน
+            <code>go build ./...</code> ตรวจ compile error ทุก package ใน module
+            <code>go test ./...</code> รัน unit tests ทุกตัวในทีเดียว
+          </p>
+          <p>
+            ข้อดีของ Go คือ compile เร็วและ deterministic ถ้า build ผ่าน logic ส่วนใหญ่มักถูกต้อง
+            worker ที่ทำงานกับ Go slice ควร verify ด้วยทั้งสองคำสั่งเสมอ โดยไม่ข้าม
+          </p>
+
+          <pre><code># Worker verify slice — Go
+# 1. ตรวจ compile ทุก package
+go build ./...
+
+# 2. ตรวจ vet (common bugs + suspicious constructs)
+go vet ./...
+
+# 3. รัน tests พร้อม race detector
+go test -race ./...
+
+# 4. Format check (ถ้าต้องการ enforce)
+gofmt -l . | grep -q '.' && echo "FORMAT ERROR" && exit 1
+
+# ถ้า pass ทั้งหมด — commit
+git add internal/handler/
+git commit -m "feat: add handler slice for issue-N"</code></pre>
+
+          <p>
+            flag <code>-race</code> ใน <code>go test</code> เปิด race detector ซึ่งสำคัญมากสำหรับ concurrent code
+            ใน Go ควรเปิดไว้เสมอในขั้นตอน verify แม้จะทำให้ช้าลงเล็กน้อย
+          </p>
+
+          <h2 id="section-4">12.4 Rust — cargo build และ cargo test</h2>
+          <p>
+            Rust มี toolchain ที่เข้มแข็งมาก <code>cargo</code> จัดการทั้ง build, test, lint และ format ในที่เดียว
+            <code>cargo build</code> ตรวจ compile; <code>cargo test</code> รัน unit + integration tests
+          </p>
+          <p>
+            สิ่งที่พิเศษของ Rust คือ compiler error message มีรายละเอียดมากจนมักบอกวิธีแก้เองได้เลย
+            worker ที่ทำงานกับ Rust slice ควรอ่าน compiler output อย่างละเอียดก่อนสรุปว่าต้องเปลี่ยนอะไร
+          </p>
+
+          <pre><code># Worker verify slice — Rust
+# 1. Build (debug mode เพื่อความเร็ว)
+cargo build
+
+# 2. Clippy — linter ที่ครอบคลุมกว่า compiler warnings
+cargo clippy -- -D warnings
+
+# 3. รัน tests
+cargo test
+
+# 4. Format check
+cargo fmt --check
+
+# ถ้าต้องการ build release (เช่น production binary)
+cargo build --release
+
+# ถ้า pass ทั้งหมด — commit
+git add src/
+git commit -m "feat: implement Rust slice for issue-N"</code></pre>
+
+          <p>
+            flag <code>-D warnings</code> ใน clippy ทำให้ warning กลายเป็น error — เป็น practice ที่ดีเพราะบังคับให้แก้ทุก warning
+            ก่อน commit แทนที่จะปล่อยทิ้งไว้จนสะสม
+          </p>
+
+          <h2 id="section-5">12.5 TypeScript/JavaScript — tsc และ bun test</h2>
+          <p>
+            โปรเจกต์ TypeScript/JavaScript มีหลาย runtime ให้เลือก — Node.js, Bun, Deno
+            แต่กระบวนการ verify คล้ายกัน: type-check ด้วย <code>tsc --noEmit</code> ก่อน แล้วรัน test suite
+          </p>
+          <p>
+            <code>tsc --noEmit</code> ตรวจ type error โดยไม่ emit ไฟล์ output ทำให้เร็วและเหมาะสำหรับ verify step
+            หลังจากนั้นรัน test ด้วย <code>bun test</code>, <code>npm test</code> หรือ <code>vitest</code> แล้วแต่ project setup
+          </p>
+
+          <pre><code># Worker verify slice — TypeScript (Bun)
+# 1. Type check — ไม่ emit output
+npx tsc --noEmit
+
+# 2. Lint (ESLint)
+npx eslint src/ --ext .ts,.tsx
+
+# 3. รัน tests ด้วย Bun
+bun test
+
+# หรือถ้าใช้ npm/vitest:
+# npm test
+# npx vitest run
+
+# 4. Build check (optional — ตรวจว่า bundle ไม่พัง)
+bun build src/index.ts --outdir dist/
+
+# ถ้า pass ทั้งหมด — commit
+git add src/feature/
+git commit -m "feat: add TS feature slice for issue-N"</code></pre>
+
+          <p>
+            สำหรับโปรเจกต์ Next.js หรือ Remix การรัน <code>next build</code> หรือ <code>remix build</code> ใน CI
+            เป็นการ verify ที่ครอบคลุมที่สุด แต่ช้ากว่า tsc เปล่า ๆ
+            ให้ทำใน aggregate step แทน ไม่ใช่ใน worker แต่ละตัว
+          </p>
+
+          <h2 id="section-6">12.6 ตาราง Build/Test Command ต่อภาษา</h2>
+          <p>
+            ตารางนี้สรุปคำสั่ง verify ที่แนะนำให้ worker ใช้ในแต่ละภาษา
+            L2 orchestrator ควรระบุคำสั่งเหล่านี้อย่างชัดเจนในช่วง briefing เพื่อให้ worker รู้ว่าต้อง verify อะไรบ้าง
+            ก่อนที่จะ commit slice ของตัวเอง
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ภาษา</th>
+                <th>Build / Compile</th>
+                <th>Test</th>
+                <th>Lint / Format</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Python</td>
+                <td><code>pip install -e ".[dev]"</code></td>
+                <td><code>pytest tests/ -v</code></td>
+                <td><code>ruff check src/</code></td>
+              </tr>
+              <tr>
+                <td>Go</td>
+                <td><code>go build ./...</code></td>
+                <td><code>go test -race ./...</code></td>
+                <td><code>go vet ./...</code></td>
+              </tr>
+              <tr>
+                <td>Rust</td>
+                <td><code>cargo build</code></td>
+                <td><code>cargo test</code></td>
+                <td><code>cargo clippy -- -D warnings</code></td>
+              </tr>
+              <tr>
+                <td>TypeScript</td>
+                <td><code>tsc --noEmit</code></td>
+                <td><code>bun test</code> หรือ <code>vitest run</code></td>
+                <td><code>eslint src/ --ext .ts</code></td>
+              </tr>
+              <tr>
+                <td>JavaScript</td>
+                <td><code>node --check src/index.js</code></td>
+                <td><code>npm test</code></td>
+                <td><code>eslint src/</code></td>
+              </tr>
+              <tr>
+                <td>Bash/Shell</td>
+                <td><code>bash -n script.sh</code></td>
+                <td><code>bats tests/</code></td>
+                <td><code>shellcheck script.sh</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            สำหรับโปรเจกต์ที่มีหลายภาษา (polyglot) L2 orchestrator ควรบอก worker แต่ละตัวว่าต้องรันคำสั่งของภาษาใด
+            ห้าม worker รันคำสั่งของภาษาอื่นที่ตัวเองไม่ได้แก้โค้ด — เพราะอาจทำให้ test fail จากสาเหตุที่ไม่เกี่ยวกับ slice ของตัวเอง
+          </p>
+
+          <h2 id="section-7">12.7 Docker Rebuild หลัง Merge</h2>
+          <p>
+            เมื่อ L1 merge PR ที่มีการแก้โค้ดที่ run อยู่ใน container ขั้นตอนถัดไปคือ rebuild และ restart container
+            นี่เป็นหน้าที่ของ L1 oracle เท่านั้น — L2 และ L3 worker ไม่มีสิทธิ์ rebuild container
+            เพราะ rebuild เป็น deploy action ที่ต้องการ authority ระดับ L1
+          </p>
+          <p>
+            คำสั่ง rebuild มาตรฐานคือ <code>docker compose build --no-cache</code> ตามด้วย <code>docker compose up -d</code>
+            flag <code>--no-cache</code> บังคับให้ build ใหม่ทั้งหมดเพื่อให้แน่ใจว่าโค้ดที่เพิ่งแก้ถูก include
+          </p>
+
+          <pre><code># L1 Oracle — Docker rebuild หลัง merge
+# 1. Rebuild ทุก service
+docker compose build --no-cache
+
+# 2. Restart services
+docker compose up -d
+
+# 3. ตรวจสุขภาพทุก service
+docker compose ps
+
+# คาดหวัง: State = Up / running สำหรับทุก service
+# ถ้ามี service ที่ Exit หรือ Restarting — ดู logs
+docker compose logs --tail=50 service-name
+
+# === ถ้า smoke test ล้ม — REVERT ===
+# revert merge commit
+git revert HEAD --no-edit
+git push
+
+# rebuild กลับ last-known-good
+docker compose build --no-cache
+docker compose up -d
+docker compose ps</code></pre>
+
+          <p>
+            Smoke test หลัง rebuild คือการตรวจว่า <code>docker compose ps</code> แสดง State เป็น <code>Up</code> ทุก service
+            ถ้ามี service ใดล้ม L1 ต้อง revert merge commit ทันที ไม่ใช่พยายาม hotfix บน container ที่พัง
+            เพราะ history ในระบบ Gale Workflow ถือว่าศักดิ์สิทธิ์ — "Nothing is Deleted" หมายถึง revert ด้วย commit ใหม่เสมอ
+          </p>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart LR
+  A[PR merged] --&gt; B[docker compose build --no-cache]
+  B --&gt; C[docker compose up -d]
+  C --&gt; D{docker compose ps}
+  D --&gt;|All Up| E[smoke test pass]
+  D --&gt;|Service Exit| F[ดู logs]
+  F --&gt; G[git revert HEAD]
+  G --&gt; H[git push]
+  H --&gt; I[rebuild last-known-good]
+  E --&gt; J[แจ้งผลให้ทีม]
+  I --&gt; J</div>
+            <figcaption><strong>ภาพที่ 12.2: Docker rebuild และ smoke test flow หลัง merge</strong><span>ถ้า service ล้มให้ revert ทันที ไม่ hotfix บน container ที่พัง</span></figcaption>
+          </figure>
+
+          <p>
+            การ rebuild ที่สม่ำเสมอและ predictable นี้คือสิ่งที่ทำให้ production environment ของ Gale Workflow
+            ไม่มี "drift" ระหว่างโค้ดใน git กับโค้ดที่ run จริงใน container
+            ทุก deploy trace ได้ถึง PR และ commit ที่เฉพาะเจาะจง
+          </p>
+
+          <h2 id="section-8">สรุปบทที่ 12</h2>
+          <p>
+            Gale Workflow ออกแบบมาให้ orchestration layer เป็น language-agnostic อย่างแท้จริง
+            L1, L2, maw commands และ hook chain ทำงานเหมือนกันไม่ว่าโปรเจกต์จะใช้ Python, Go, Rust หรือ TypeScript
+            สิ่งเดียวที่ปรับตามภาษาคือคำสั่ง verify ที่ worker รันก่อน commit
+          </p>
+          <p>
+            หลักการสำคัญคือ worker verify slice ของตัวเองก่อนเสมอ — ไม่รอให้ L2 ตรวจ
+            L2 aggregate verify เป็นตาข่ายนิรภัยอีกชั้น ไม่ใช่แทนที่การ verify ของ worker
+            แต่ละภาษามีเครื่องมือที่เหมาะสมอยู่แล้ว — ใช้ให้ถูกต้องตามธรรมชาติของภาษานั้น
+          </p>
+          <p>
+            สำหรับโปรเจกต์ที่ run ใน Docker container ขั้นตอน rebuild หลัง merge เป็น mandatory สำหรับ L1
+            smoke test ทุก service หลัง <code>docker compose up -d</code> และ revert ทันทีถ้าล้ม
+            การ trace ที่ชัดเจนระหว่างโค้ด, PR, และ container state คือสิ่งที่ทำให้ system น่าเชื่อถือในระยะยาว
+          </p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch11.html">← CMMI &amp; Docs</a>
+          <a class="button primary" href="ch13.html">Hooks เจาะลึก →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

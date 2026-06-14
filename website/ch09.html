@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="SOLO vs TEAM routing: คำถามเดียวที่ใช้ตัดสินทุกงาน, strategy.json gate และ parallel L2s ใน Gale Workflow">
+  <title>SOLO vs TEAM Routing | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html" class="active" aria-current="page"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 09</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>SOLO vs TEAM Routing</h1>
+          <p class="chapter-lead">คำถามเดียวที่ใช้ตัดสินทุกงาน, strategy.json gate ที่ machine บังคับใช้ และ parallel L2s สำหรับ issues ที่อิสระต่อกัน</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">9.1 คำถามเดียว: routing decision ที่ชัดเจน</h2>
+          <p>ก่อนเริ่มงานทุกงาน L2 orchestrator ต้องตอบคำถามเดียวนี้: <strong>"คนเดียวทำงานนี้ได้ใน 30 นาที ใน 1-2 ไฟล์ โดยไม่ต้องทำ research ก่อนไหม?"</strong> ถ้าตอบ "ใช่" ชัดเจน — SOLO; ถ้าตอบ "ไม่" หรือ "ไม่แน่ใจ" — TEAM ทันที ไม่มีระดับกลาง</p>
+          <p>ข้อสำคัญ: TEAM คือ default ไม่ใช่ exception SOLO สงวนไว้สำหรับกรณีที่ชัดเจนจริงๆ เท่านั้น เช่น แก้ typo ใน config, เปลี่ยน environment variable ใน 1 ไฟล์, หรือ fix bug ที่มี stack trace ชัดเจนและแก้ใน function เดียว ถ้ามีข้อสงสัยเลือก TEAM เสมอ</p>
+          <p>เกณฑ์ที่บังคับให้เป็น TEAM อัตโนมัติ (ข้อใดข้อหนึ่งก็เพียงพอ):</p>
+          <ul>
+            <li>ต้องทำ research ก่อน (อ่านหลายไฟล์, ดู schema, เปรียบเทียบ implementation)</li>
+            <li>งานแตะมากกว่า 2 ไฟล์ หรือมากกว่า 200 บรรทัด</li>
+            <li>มีมากกว่า 1 issue</li>
+            <li>ต้องเขียนหรือแก้ test ควบคู่ไปด้วย</li>
+            <li>L2 ไม่แน่ใจว่า SOLO หรือเปล่า</li>
+          </ul>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TD
+  Start([งานใหม่เข้ามา]) --&gt; Q1{"คนเดียวทำได้\nใน 30 นาที?\n1-2 ไฟล์?\nไม่ต้อง research?"}
+  Q1 --&gt;|ใช่ทุกข้อ| SOLO[SOLO route]
+  Q1 --&gt;|ไม่ หรือไม่แน่ใจ| TEAM[TEAM route]
+  SOLO --&gt; S1[workon pane code ตรง]
+  S1 --&gt; S2[1 PR: Closes #N]
+  S2 --&gt; S3[DONE-ping ถึง L1]
+  TEAM --&gt; T1[spawn OMX workers]
+  T1 --&gt; T2[1 issue ต่อ worker]
+  T2 --&gt; T3[aggregate --&gt; PR เดียว]
+  T3 --&gt; T4[team shutdown]
+  T4 --&gt; T5[DONE-ping ถึง L1]
+  S3 --&gt; Merge([L1 /scrutinize + merge])
+  T5 --&gt; Merge</div>
+            <figcaption><strong>ภาพที่ 9.1: SOLO vs TEAM routing decision</strong><span>คำถามเดียวนำไปสู่ two clear paths — L1 merge ทั้งคู่</span></figcaption>
+          </figure>
+
+          <h2 id="section-2">9.2 SOLO route: เส้นทางตรงไม่ซับซ้อน</h2>
+          <p>เมื่อ routing เป็น SOLO, L2 worktree pane ลงมือเขียนโค้ดเองโดยตรง ไม่ spawn worker ใดทั้งสิ้น L2 ประกาศ <code>STRATEGY: SOLO. Justification: &lt;เหตุผล&gt;</code> เขียน <code>.maw/strategy.json</code> แล้วเริ่มโค้ดทันที</p>
+          <p>SOLO route สิ้นสุดด้วย: commit บน branch → push → เปิด PR 1 ใบที่มี <code>Closes #N</code> → ส่ง DONE-ping ให้ L1 → หยุด L2 ต้องไม่ merge และต้องไม่รัน <code>maw done</code> ตัวเอง ทั้งสองอย่างนั้นเป็นอำนาจของ L1 เท่านั้น</p>
+
+          <pre><code># ตัวอย่าง SOLO route สมบูรณ์
+# L2 ประกาศ strategy ก่อน
+echo '{"route":"SOLO","justification":"แก้ typo ใน config 1 ไฟล์"}' \
+  &gt; .maw/strategy.json
+
+# โค้ดตรง, commit, push
+git add config/settings.json
+git commit -m "fix: แก้ไข endpoint URL ใน config
+
+Closes #42"
+
+git push -u origin fix/issue-42
+
+# เปิด PR
+maw pr
+
+# ส่ง DONE-ping
+maw hey my-oracle "DONE: PR พร้อม review: #42 (Closes #42). ขอ /scrutinize + merge + maw done"
+
+# เขียน marker กัน duplicate ping
+mkdir -p .maw &amp;&amp; touch .maw/done-pinged
+
+# STOP — ห้าม merge เอง</code></pre>
+
+          <h2 id="section-3">9.3 TEAM route: ephemeral OMX workers</h2>
+          <p>TEAM route เริ่มต้นด้วย L2 ประกาศ <code>STRATEGY: TEAM</code>, เขียน <code>.maw/strategy.json</code>, สร้าง team roster ด้วย <code>maw team create &lt;slug&gt;</code> แล้ว spawn OMX workers ทีละคน แต่ละ worker ได้รับ fresh worktree ของ project นั้น พร้อม brief ที่บรรจุ issue number และขอบเขตของงาน</p>
+          <p>กฎ member cap สำคัญมาก: <strong>สูงสุด 4 workers ต่อ team</strong> ถ้างานมีมากกว่า 4 issues ให้ทำเป็น sequential batch — รอ batch แรกเสร็จ shutdown ก่อน แล้ว spawn batch ใหม่ผ่าน L2 เดิม การเกิน 4 workers ทำให้ coordination overhead สูงเกินประโยชน์</p>
+
+          <pre><code># ตัวอย่าง TEAM route สมบูรณ์
+# L2 ประกาศ strategy
+echo '{"route":"TEAM","justification":"3 issues แยก module, ต้องการ research + test"}' \
+  &gt; .maw/strategy.json
+
+# สร้าง team
+maw team create sprint-issues
+
+# spawn workers — brief บรรจุที่ spawn ทันที
+maw team spawn sprint-issues worker-1 \
+  --wt --engine omx --exec \
+  --prompt "Issue #10: เพิ่ม rate limiting ใน auth middleware. ไฟล์: src/auth/. เขียน unit test ด้วย."
+
+maw team spawn sprint-issues worker-2 \
+  --wt --engine omx --exec \
+  --prompt "Issue #11: แก้ bug ใน user profile API. ไฟล์: src/api/users/. ใช้ /debug-mantra ก่อน."
+
+maw team spawn sprint-issues worker-3 \
+  --wt --engine omx --exec \
+  --prompt "Issue #12: อัปเดต OpenAPI spec ให้ตรงกับ implementation ใหม่."
+
+# ตรวจสอบทุก worker ทำงานจริง
+maw panes
+maw capture sprint-issues-worker-1
+
+# หลังทุก worker DONE: aggregate branches
+git merge --no-ff sprint-issues-worker-1/branch
+git merge --no-ff sprint-issues-worker-2/branch
+git merge --no-ff sprint-issues-worker-3/branch
+
+# ตรวจสอบ + เปิด PR
+touch .maw/aggregate-verified
+maw pr
+
+# Shutdown team
+maw team shutdown sprint-issues
+
+# DONE-ping
+maw hey my-oracle "DONE: PR พร้อม review (Closes #10 #11 #12). ขอ /scrutinize + merge + maw done sprint-issues"
+mkdir -p .maw &amp;&amp; touch .maw/done-pinged</code></pre>
+
+          <h2 id="section-4">9.4 strategy.json gate — machine บังคับใช้</h2>
+          <p>การประกาศ strategy ไม่ใช่แค่ convention — มี pre-guard hook บังคับใช้โดยอัตโนมัติ ก่อนที่ L2 จะแก้ไขไฟล์ใดๆ ใน product repo, hook จะอ่าน <code>.maw/strategy.json</code> และบล็อกการทำงานถ้าพบว่า <code>route == "TEAM"</code> แต่ยังไม่มี worker ถูก spawn</p>
+          <p>การ bypass gate มีช่องทางเดียว: ถ้างานเป็น TEAM จริงแต่มีเหตุผลที่ L2 ต้องแก้บางไฟล์เองก่อน (เช่น สร้าง scaffold ที่ workers ต้องพึ่งพา) ให้เขียน <code>.maw/solo-justified</code> ก่อน ไฟล์นี้บอก gate ว่ามีการพิจารณาแล้ว ไม่ใช่ความเผลอเรอ</p>
+
+          <pre><code># รูปแบบ .maw/strategy.json
+{
+  "route": "SOLO",
+  "justification": "แก้ config 1 ไฟล์, ไม่ต้อง research"
+}
+
+# หรือสำหรับ TEAM
+{
+  "route": "TEAM",
+  "justification": "3 issues แตะ module ต่างกัน ต้องการ OMX workers แยก worktree"
+}
+
+# กรณี L1 bind routing ล่วงหน้าก่อนส่ง brief
+# L1 สร้างไฟล์นี้ใน worktree ใหม่ก่อน L2 เริ่มงาน
+{
+  "route": "TEAM",
+  "justification": "L1 binding: 4 issues decomposed, worker split explicit in brief"
+}
+
+# กรณี bypass สำหรับ tightly-coupled refactor (rare)
+# ต้องมีเหตุผลชัดเจน
+printf '{"justification":"scaffold ก่อน spawn — config file สร้างไว้ให้ workers ใช้"}' \
+  &gt; .maw/solo-justified</code></pre>
+
+          <p>hook ยังบล็อกกรณีอื่นโดยอัตโนมัติ: ถ้า L2 เริ่มสร้าง module directory ใหม่โดยไม่มี workers อยู่เลย gate ถือว่านี่คือ scope ของ TEAM ไม่ใช่ SOLO</p>
+
+          <h2 id="section-5">9.5 Escalation guard: เมื่อ SOLO กลายเป็น TEAM</h2>
+          <p>SOLO ที่เริ่มต้นด้วยความตั้งใจดีอาจขยายขอบเขตโดยไม่รู้ตัว — เช่น แก้ bug แล้วพบว่าต้นเหตุอยู่ใน layer อื่น ต้องแก้หลายไฟล์ หรือต้องเขียน test ที่ซับซ้อน Escalation guard กำหนดให้ L2 ต้อง <strong>หยุดทันที</strong> เมื่อพบสัญญาณต่อไปนี้ระหว่าง SOLO:</p>
+          <ul>
+            <li>ต้องทำ research เพิ่มที่ไม่ได้คาดไว้ตอน estimate</li>
+            <li>จำนวนไฟล์ที่ต้องแก้เกิน 4 ไฟล์</li>
+            <li>จำนวนบรรทัดที่เปลี่ยนแปลงเกิน 200 บรรทัด</li>
+            <li>พบ concern ใหม่ที่ควรแยกเป็น issue ต่างหาก</li>
+          </ul>
+          <p>เมื่อพบสัญญาณ L2 ต้องทำทันที: หยุดเขียนโค้ด → ประกาศ "แปลงจาก SOLO เป็น TEAM" → อัปเดต <code>.maw/strategy.json</code> → spawn OMX workers ตามขอบเขตที่ค้นพบใหม่ โค้ดที่เขียนไปแล้วใน SOLO phase ยังอยู่ใน worktree — L2 commit เป็น WIP branch แล้วให้ worker ที่เกี่ยวข้อง rebase จากนั้น</p>
+
+          <pre><code># กระบวนการแปลง SOLO เป็น TEAM
+# 1. หยุดเขียนโค้ด commit งานที่ทำไปแล้ว
+git add src/auth/middleware.ts
+git commit -m "wip: partial auth fix — converting to TEAM"
+
+# 2. อัปเดต strategy
+echo '{"route":"TEAM","justification":"พบว่าต้องแก้ 5 ไฟล์ + เขียน test — เกิน SOLO threshold"}' \
+  &gt; .maw/strategy.json
+
+# 3. spawn workers ตาม scope ที่ค้นพบจริง
+maw team create sprint-escalated
+maw team spawn sprint-escalated worker-1 \
+  --wt --engine omx --exec \
+  --prompt "Issue #15: ต่อจาก WIP auth/middleware.ts. Rebase จาก branch wip/issue-15."
+
+maw team spawn sprint-escalated worker-2 \
+  --wt --engine omx --exec \
+  --prompt "Issue #15: เขียน unit test สำหรับ auth middleware ใหม่. ไฟล์: tests/auth/"</code></pre>
+
+          <h2 id="section-6">9.6 Parallel L2s: issues อิสระทำพร้อมกัน</h2>
+          <p>กฎ "ต้องผ่าน L2 เดียว" ไม่ใช่ข้อบังคับ — เป็นเพียง default ที่ปลอดภัย เมื่อ L1 วิเคราะห์แล้วพบว่า issues หลายตัวอิสระต่อกัน (ไฟล์ไม่ทับกัน, ไม่มี shared API contract), L1 สามารถเปิด parallel L2 windows ได้ — แต่ละ L2 รับผิดชอบ issues ของตัวเองตั้งแต่ต้นจนจบ</p>
+          <p>ตัวอย่าง: issue #20 (แก้ frontend component) กับ issue #21 (เพิ่ม API endpoint ใหม่) อิสระต่อกันอย่างสมบูรณ์ L1 เปิด <code>maw workon my-product issue-20</code> และ <code>maw workon my-product issue-21</code> พร้อมกัน แต่ละ L2 routes SOLO/TEAM เองตาม scope</p>
+          <p>ข้อจำกัดสำคัญของ Parallel L2s ที่ต้องปฏิบัติอย่างเคร่งครัด:</p>
+          <ul>
+            <li><strong>ไม่เปิด parallel L2s สำหรับ issues ที่แตะไฟล์เดียวกัน</strong> — merge conflict ที่ L1 ต้องแก้มือ</li>
+            <li><strong>L1 merge PRs ทีละใบตามลำดับ</strong> (serial) — scrutinize → merge → rebase ใบถัดไปก่อน merge</li>
+            <li><strong><code>maw done</code> ทีละอัน</strong> ไม่รันพร้อมกัน — shared git lock จะ corrupt</li>
+          </ul>
+
+          <pre><code># L1 เปิด parallel L2s สำหรับ issues ที่อิสระต่อกัน
+# ตรวจสอบก่อนว่าไม่มีไฟล์ทับกัน
+maw workon my-product issue-20   # frontend component — L2-A window
+maw workon my-product issue-21   # API endpoint ใหม่ — L2-B window
+
+# L1 monitor ทั้งสอง
+maw panes
+
+# เมื่อ L2-A DONE-ping มาก่อน:
+# L1 scrutinize PR #20 → merge → maw done L2-A window
+
+# แล้วค่อย scrutinize PR #21 → merge → maw done L2-B window
+# (serial merge, ไม่ parallel)</code></pre>
+
+          <h2 id="section-7">9.7 ตาราง SOLO vs TEAM และ member cap</h2>
+          <p>ตารางเปรียบเทียบด้านล่างสรุปทุกมิติที่สำคัญระหว่าง SOLO และ TEAM รวมถึง member cap และการจัดการ batch สำหรับงานขนาดใหญ่</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>มิติ</th>
+                <th>SOLO</th>
+                <th>TEAM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>เลือกเมื่อ</td>
+                <td>ชัดเจน, 1-2 ไฟล์, ไม่ต้อง research, ไม่แน่ใจ = ไม่ใช่</td>
+                <td>ทุกกรณีที่ไม่ SOLO — รวมถึงกรณีไม่แน่ใจ</td>
+              </tr>
+              <tr>
+                <td>Workers</td>
+                <td>ไม่มี — L2 โค้ดเอง</td>
+                <td>1-4 OMX workers (max 4)</td>
+              </tr>
+              <tr>
+                <td>PRs</td>
+                <td>1 PR ต่อ issue</td>
+                <td>1 consolidated PR ที่มีทุก Closes #N</td>
+              </tr>
+              <tr>
+                <td>strategy.json</td>
+                <td><code>"route": "SOLO"</code></td>
+                <td><code>"route": "TEAM"</code></td>
+              </tr>
+              <tr>
+                <td>เวลาทำ</td>
+                <td>ต่ำกว่า 30 นาที</td>
+                <td>ไม่จำกัด — ตาม scope</td>
+              </tr>
+              <tr>
+                <td>Aggregate step</td>
+                <td>ไม่มี</td>
+                <td>ต้อง: lint/build/test + touch .maw/aggregate-verified</td>
+              </tr>
+              <tr>
+                <td>Team shutdown</td>
+                <td>ไม่มี</td>
+                <td>บังคับ: maw team shutdown ก่อน DONE-ping</td>
+              </tr>
+              <tr>
+                <td>Merge authority</td>
+                <td>L1 เท่านั้น</td>
+                <td>L1 เท่านั้น</td>
+              </tr>
+              <tr>
+                <td>Escalation</td>
+                <td>เปลี่ยนเป็น TEAM ทันทีเมื่อเกิน threshold</td>
+                <td>batch ต่อเนื่องถ้า &gt;4 issues</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>สำหรับงานที่มีมากกว่า 4 issues การทำเป็น sequential batch ผ่าน L2 เดิม: ทำ batch 1 (4 issues) → shutdown → ทำ batch 2 → shutdown → รวม PRs ก่อน DONE-ping ถ้า issues อิสระต่อกัน อาจเปิด Parallel L2s แต่ยัง limit 4 workers ต่อ L2</p>
+
+          <h2 id="section-8">9.8 สรุปบทที่ 09</h2>
+          <p>SOLO vs TEAM routing เป็นการตัดสินใจที่ง่ายที่สุดในทั้ง workflow — คำถามเดียว, คำตอบสองทาง, ไม่มีระดับกลาง ความสำคัญอยู่ที่การยอมรับว่า TEAM คือ default ที่ปลอดภัย ไม่ใช่สิ่งที่ต้องหลีกเลี่ยง</p>
+          <p>strategy.json gate ทำให้การตัดสินใจมีน้ำหนัก — ไม่ใช่แค่ convention แต่มี machine enforcement ปิดกั้นการเลื่อนขอบเขตโดยไม่ตั้งใจ Escalation guard ป้องกัน SOLO ที่โตเกิน threshold และ parallel L2s ให้ flexibility สำหรับ independent issues</p>
+          <p>บทถัดไปจะครอบคลุม SOPs และ Merge Gate — ระบบ SOP ที่โหลดก่อนงาน, sequence การทำงานจนถึง DONE-ping, และกลไก on-stop crash safety ที่รับรองว่า L1 ไม่มีทางพลาด PR แม้ L2 จะ crash กลางคัน</p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch08.html">← Delegation Tiers</a>
+          <a class="button primary" href="ch10.html">SOPs &amp; Merge Gate →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

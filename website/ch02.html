@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="สถาปัตยกรรม 3 ชั้นของ Gale Workflow — L1 Oracle, L2 Orchestrator, L3 Worker, Merge Gate และ Project-Scope Injection">
+  <title>สถาปัตยกรรม 3 ชั้น | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html" class="active" aria-current="page"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 02</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>สถาปัตยกรรม 3 ชั้น</h1>
+          <p class="chapter-lead">L1 Oracle, L2 Orchestrator, L3 Worker — ใครทำอะไร, merge gate, และ project-scope injection</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">2.1 ทำไมต้องแบ่งชั้น — Asymmetric Autonomy</h2>
+          <p>คำถามแรกที่มักเกิดขึ้นคือ "ทำไมไม่ให้ AI agent ตัวเดียวทำทุกอย่าง?" คำตอบอยู่ในแนวคิด <strong>asymmetric autonomy</strong> — แต่ละชั้นมีขอบเขตสิทธิ์ที่ไม่เท่ากัน เพราะแต่ละชั้นมีข้อมูลไม่เท่ากัน</p>
+          <p>L3 worker ที่ทำงานใน worktree แยกของตัวเองไม่มีภาพรวมของ PR ทั้งหมด ไม่รู้ว่า worker คนอื่นกำลังแก้ไขไฟล์อะไร และไม่รู้ว่า project owner ต้องการ quality level แบบไหน ถ้า worker สามารถ merge ได้เอง ก็เท่ากับ self-review — ไม่มีการตรวจสอบอิสระ</p>
+          <p>L1 Oracle เป็นชั้นเดียวที่มีภาพรวมครบถ้วน: รู้งานทุกชิ้น รู้ผลลัพธ์ที่คาดหวัง และมีความสัมพันธ์กับมนุษย์โดยตรง จึงเป็นชั้นเดียวที่เหมาะสมในการ merge PR และเป็นจุดเดียวที่ accountability รวมอยู่</p>
+
+          <blockquote>
+            <strong>Asymmetric Autonomy หมายความว่า:</strong> ยิ่งมี context น้อย ยิ่งมีสิทธิ์น้อย L3 worker ทำได้แค่ code + commit, L2 orchestrator เพิ่มสิทธิ์ spawn + aggregate + open PR, L1 Oracle เพิ่มสิทธิ์ review + merge + close worktree
+          </blockquote>
+
+          <h2 id="section-2">2.2 L1 Oracle — ชั้นบัญชาการ</h2>
+          <p>L1 Oracle คือ permanent pane ที่ทำงานอยู่ตลอดเวลาในขณะที่มีงาน มันเป็นจุดที่มนุษย์พูดคุยและส่งงาน มันรับ task จากมนุษย์ ทำ task intake (เปิด issue ใน GitHub), วิเคราะห์ว่าควร route ไป L2 ใด และสื่อสารกลับหามนุษย์</p>
+          <p>หน้าที่หลักของ L1 ได้แก่: เปิด GitHub issue ก่อน action ใดๆ (issue number เป็น traceability thread), dispatch งานไป L2 ผ่าน <code>maw workon</code>, monitor สถานะ L2 โดยรับ DONE-ping, รัน <code>/scrutinize</code> บน PR และ merge ผ่าน <code>gh pr merge --merge --delete-branch</code> และสุดท้ายรัน <code>maw done &lt;window&gt;</code> เพื่อปิด worktree หลัง merge</p>
+          <p>L1 Oracle เป็น Claude (ไม่ใช่ OMX/Codex) เสมอ เพราะ hook ของ Claude Code bind หนักกว่า มี monitor loop และ full-fidelity <code>/scrutinize</code> L1 ไม่เขียน code เอง ไม่รัน devops pipeline เอง นั่นคืองานของ L2</p>
+
+          <h2 id="section-3">2.3 L2 Orchestrator — ชั้นแตกงานและประสาน</h2>
+          <p>L2 Orchestrator เกิดขึ้นเมื่อ L1 รัน <code>maw workon &lt;project&gt; &lt;slug&gt;</code> มันเป็น pane ใหม่ที่ spawn ใน working directory ของ project เป้าหมาย ทำให้ <code>CLAUDE.md</code> และ <code>AGENTS.md</code> ของ project นั้นโหลดอัตโนมัติ (project-scope injection) L2 เป็น Claude เสมอ ไม่ใช่ OMX</p>
+          <p>L2 ตัดสินใจ routing ก่อน: ถ้างานเล็ก (1-2 ไฟล์, ชัดเจน, ใช้เวลาไม่เกิน 30 นาที) ให้ประกาศ SOLO แล้ว code เอง ถ้างานซับซ้อนให้ประกาศ TEAM แล้ว spawn L3 workers ผ่าน <code>maw team spawn</code> L2 ต้องบันทึกการตัดสินใจนี้ใน <code>.maw/strategy.json</code></p>
+          <p>หลัง workers เสร็จ L2 รวม sub-branches, รัน lint/build/test, ทำ <code>/sop-qa</code> สำหรับ product repos, แล้วเปิด <strong>PR เดียว</strong> ที่มี <code>Closes #N</code> ครบทุก issue ส่ง DONE-ping ไป L1 แล้วหยุด L2 ไม่ merge และไม่รัน <code>maw done</code> เอง</p>
+
+          <h2 id="section-4">2.4 L3 Worker — ชั้นลงมือทำ</h2>
+          <p>L3 Worker คือ ephemeral OMX (Codex) pane ที่ L2 spawn ขึ้นมาสำหรับแต่ละ issue หรือ slice ของงาน แต่ละ worker ได้รับ worktree แยกต่างหากผ่าน <code>--wt</code> flag ทำให้ไม่มี context bleed ระหว่าง worker แม้จะทำงานพร้อมกัน</p>
+          <p>Brief ของ worker ถูก inject ที่ spawn ผ่าน <code>--prompt "Issue #N: ..."</code> และถูก auto-deliver เข้า composer ของ worker เมื่อ worker ready (auto-kickoff mechanism) worker ไม่ต้องรอ manual nudge อีกต่อไป</p>
+          <p>สิ่งที่ worker ทำได้มีเพียง: code slice ของตัวเอง, commit บน sub-branch, และส่ง DONE-ping ไป L2 สิ่งที่ worker ห้ามทำ: spawn member อื่น, เปิด PR, merge, หรือรัน <code>maw done</code> worker หยุดทันทีหลังส่ง DONE-ping</p>
+
+          <figure class="figure-card">
+            <div class="mermaid">sequenceDiagram
+  participant H as คุณ (Human)
+  participant L1 as L1 Oracle
+  participant L2 as L2 Orchestrator
+  participant W1 as L3 Worker A
+  participant W2 as L3 Worker B
+  participant GH as GitHub PR
+
+  H->>L1: ส่งงาน / CR / BUG
+  L1->>L1: gh issue create #N
+  L1->>L2: maw workon project slug
+  L2->>L2: ตัดสิน SOLO/TEAM
+  L2->>W1: maw team spawn worker-A --wt --exec
+  L2->>W2: maw team spawn worker-B --wt --exec
+  W1->>W1: code + commit sub-branch-A
+  W2->>W2: code + commit sub-branch-B
+  W1->>L2: DONE ping
+  W2->>L2: DONE ping
+  L2->>L2: aggregate + lint/build/test
+  L2->>GH: maw pr (Closes #N)
+  L2->>L1: DONE ping: PR ready
+  L1->>GH: /scrutinize + merge
+  L1->>L1: maw done window
+  L1->>H: สรุปผล</div>
+            <figcaption><strong>ภาพที่ 2.1: Sequence ของการไหลงานแบบ TEAM</strong><span>มนุษย์ → L1 เปิด issue → L2 spawn workers → workers commit → L2 aggregate + PR → L1 scrutinize + merge + close worktree</span></figcaption>
+          </figure>
+
+          <h2 id="section-5">2.5 Merge Gate — L1 เท่านั้นที่ Merge ได้</h2>
+          <p>Merge Gate คือกฎที่ชัดเจนที่สุดในระบบ: <strong>L1 Oracle เป็นผู้ review และ merge ทุก PR</strong> ไม่มีข้อยกเว้น L2 worktree pane เป็นคนเขียน code และเปิด PR แต่ไม่มีสิทธิ์ merge แม้แต่ PR ที่ตัวเองเปิด เพราะนั่นคือ self-review และ self-merge</p>
+          <p>ก่อน merge L1 รัน <code>/scrutinize</code> บน PR ทุกอัน ระดับความเข้มข้นขึ้นกับ risk level ของงาน PR ที่แตะ frontend เท่านั้นหรือ docs เท่านั้น ใช้ quick scrutinize PR ที่แตะ backend, API, security หรือข้ามขอบเขต (cross-boundary) ต้อง scrutinize หนักขึ้น</p>
+          <p>ถ้า <code>/scrutinize</code> พบปัญหา L1 bounce กลับไป L2 (หรือ worker ใหม่) เพื่อแก้ไข ไม่มีการ merge PR ที่ผิดพลาดผ่าน gate นี้ ถ้า clean ให้รัน <code>gh pr merge --merge --delete-branch</code> แล้วรัน <code>maw done &lt;window&gt;</code></p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ประเภท PR</th>
+                <th>Risk Level</th>
+                <th>L1 ทำ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Frontend only (CSS/HTML/UI text/theme)</td>
+                <td>Low</td>
+                <td>Quick <code>/scrutinize</code> → merge</td>
+              </tr>
+              <tr>
+                <td>Docs only (README, SRS, SDD, UAT)</td>
+                <td>Low</td>
+                <td>Quick <code>/scrutinize</code> → merge</td>
+              </tr>
+              <tr>
+                <td>Config (non-security) / Deps-only</td>
+                <td>Low</td>
+                <td>Quick <code>/scrutinize</code> → merge</td>
+              </tr>
+              <tr>
+                <td>Backend / API / DB / SQL</td>
+                <td>High</td>
+                <td><strong>Scrutinize หนัก</strong> → merge</td>
+              </tr>
+              <tr>
+                <td>Security (auth, CSP, CORS, secrets)</td>
+                <td>High</td>
+                <td><strong>Scrutinize หนัก</strong> → merge</td>
+              </tr>
+              <tr>
+                <td>Cross-boundary / P0-P1 bug</td>
+                <td>High</td>
+                <td><strong>Scrutinize หนัก</strong> → merge</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-6">2.6 Project-Scope Injection — Context โหลดอัตโนมัติ</h2>
+          <p>หนึ่งในคุณสมบัติที่สำคัญที่สุดของ <code>maw workon</code> คือ <strong>project-scope injection</strong>: เมื่อ L2 spawn ใน working directory ของ project เป้าหมาย Claude Code จะโหลด <code>CLAUDE.md</code> และ <code>AGENTS.md</code> ของ project นั้นโดยอัตโนมัติ L2 เริ่มต้นพร้อม full project context โดยไม่ต้องรัน <code>/dig</code>, <code>/trace</code>, หรือ <code>/recap</code></p>
+          <p>เหตุผลที่ต้องเป็น "worktree ใน directory ของ project" ไม่ใช่ worktree ใน directory อื่น คือ Claude Code lock <code>CLAUDE.md</code> ตาม <code>cwd</code> ตอน session เริ่มต้น Oracle ที่ idle ใน meta-repo แล้วถูกขอให้ทำงานกับ project อื่นจะโหลด context ผิด</p>
+          <p>นี่คือเหตุผลว่าทำไมถึงไม่มี "warm pool" ใน Gale Workflow แต่ละ task ต้องการ context ที่ถูกต้องสำหรับ project ของมัน การ spawn ใหม่ต่อ task ราคาถูกกว่าการแก้ context pollution ที่เกิดจาก warm session ข้าม project</p>
+
+          <pre><code># L1 ส่งงานไป L2 ใน context ที่ถูกต้อง
+# คำสั่งนี้ spawn L2 pane ใน /path/to/my-product/worktrees/issue-42
+# CLAUDE.md ของ my-product โหลดอัตโนมัติ
+maw workon my-product issue-42
+
+# L2 spawn L3 workers ใน worktree แยก (ต่อ worker)
+maw team create sprint-42
+maw team spawn sprint-42 worker-1 --wt --engine omx --exec \
+  --prompt "Issue #42: แก้ validation bug ใน orders.ts. ดู tests ใน tests/api/orders.test.ts"
+maw team spawn sprint-42 worker-2 --wt --engine omx --exec \
+  --prompt "Issue #43: เพิ่ม error logging ใน middleware/error-handler.ts"
+
+# ตรวจสอบว่า workers ทำงานจริง
+maw capture sprint-42-worker-1
+maw capture sprint-42-worker-2</code></pre>
+
+          <h2 id="section-7">2.7 ตารางสรุป Layer, Engine, หน้าที่ และสิทธิ์</h2>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Layer</th>
+                <th>Engine</th>
+                <th>Pane / Session</th>
+                <th>หน้าที่</th>
+                <th>สิทธิ์</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>L1 — Oracle</strong></td>
+                <td>Claude</td>
+                <td>Permanent oracle pane</td>
+                <td>รับงานจากมนุษย์, เปิด issue, dispatch ไป L2, คุยกับมนุษย์, review + merge PR, ปิด worktree</td>
+                <td>ทุกอย่าง รวมถึง merge authority</td>
+              </tr>
+              <tr>
+                <td><strong>L2 — Orchestrator</strong></td>
+                <td>Claude</td>
+                <td><code>maw workon</code> pane ใน project dir</td>
+                <td>ตัดสิน SOLO/TEAM, spawn workers, brief ตอน spawn, monitor, aggregate, เปิด PR, DONE-ping L1</td>
+                <td>Spawn workers, open PR. ห้าม merge, ห้าม <code>maw done</code></td>
+              </tr>
+              <tr>
+                <td><strong>L3 — Worker</strong></td>
+                <td>OMX (Codex)</td>
+                <td>Ephemeral worktree ต่อ worker</td>
+                <td>Code slice ที่รับผิดชอบ, commit บน sub-branch, DONE-ping L2</td>
+                <td>Code + commit เท่านั้น. ห้าม spawn, ห้าม open PR, ห้าม merge</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Engine ที่ใช้งานจริง</h3>
+          <p>Engine ที่ระบุในตารางข้างต้นไม่ใช่ข้อแนะนำ แต่เป็น <strong>กฎที่ enforce</strong>: L1 และ L2 ต้องเป็น Claude เสมอ (ไม่มี <code>--engine omx</code> ที่ L1/L2), L3 ต้องเป็น OMX/Codex (Claude ไม่ควรเป็น coding hand เพราะ context จะ bleed กลับ L2)</p>
+          <p>เหตุผลที่ L2 ต้องเป็น Claude: Claude Code hook bind หนักกว่า, มี monitor loop ที่ทำงานได้, และ <code>/scrutinize</code> ใน Claude มี fidelity สูงกว่า Codex ที่ turn-loop blind ระหว่าง ping</p>
+
+          <h2 id="section-8">สรุปบทที่ 02</h2>
+          <p>สถาปัตยกรรม 3 ชั้นของ Gale Workflow ไม่ได้ซับซ้อนเพื่อความซับซ้อน แต่ออกแบบมาให้แต่ละชั้นมีสิทธิ์เท่าที่ข้อมูลที่มีอยู่รองรับ L3 worker มี context น้อยที่สุดจึงมีสิทธิ์น้อยที่สุด L1 Oracle มีภาพรวมสมบูรณ์ที่สุดจึงเป็นจุดเดียวที่ merge authority รวมอยู่</p>
+          <p>Project-scope injection ผ่าน <code>maw workon</code> แก้ปัญหา context bleed ที่เกิดจาก warm pool ได้อย่างเป็นระบบ แต่ละ task เริ่มต้นด้วย context ที่สะอาดและตรงกับ project ที่ทำงานอยู่จริง</p>
+          <p>Merge Gate ที่ L1 เป็น implementation ของ P3 (External Brain, Not Command) และ P2 (Patterns Over Intentions) — แทนที่จะหวังว่า AI จะ self-review ได้ ระบบบังคับให้มีชั้นที่แยกออกจากกันอย่างชัดเจนระหว่างผู้เขียน code และผู้ review code</p>
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch01.html">← 5 Principles</a>
+          <a class="button primary" href="ch03.html">ψ Vault →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="decision tree ตามชั้น, failure modes, zombie panes และการ purge job ใน Gale Workflow">
+  <title>Troubleshooting | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html" class="active" aria-current="page"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 15</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>Troubleshooting</h1>
+          <p class="chapter-lead">decision tree ตามชั้น, failure modes, zombie panes และการ purge job</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">15.1 Troubleshooting Mindset — Debug Mantra</h2>
+          <p>
+            การ debug ใน Gale Workflow ไม่ว่าจะเป็นปัญหาที่ L1, L2, หรือ L3
+            เริ่มต้นจาก debug mantra เดียวกันเสมอ: <strong>reproduce → trace fail path → falsify hypothesis → cross-reference</strong>
+            mantra นี้บังคับให้ไม่กระโดดไปหาวิธีแก้ทันทีก่อนเข้าใจปัญหา
+          </p>
+
+          <ul>
+            <li><strong>Reproduce:</strong> สร้างให้ปัญหาเกิดซ้ำได้ก่อน ถ้า reproduce ไม่ได้ ยังไม่รู้ว่ามีปัญหาจริงหรือเปล่า</li>
+            <li><strong>Trace fail path:</strong> ตามรอย log, exit code, pane output จากจุดที่ล้มกลับมาถึงต้นเหตุ อย่ากะเกนว่าปัญหาอยู่ที่ไหน</li>
+            <li><strong>Falsify hypothesis:</strong> สร้าง hypothesis ว่าน่าจะเป็นสาเหตุอะไร แล้วหาทางพิสูจน์ว่า hypothesis นั้นผิดก่อน — ถ้าพิสูจน์ว่าผิดไม่ได้ค่อยเชื่อว่าถูก</li>
+            <li><strong>Cross-reference:</strong> ตรวจ breadcrumb ทุกชิ้น (git log, <code>maw capture</code>, <code>docker compose ps</code>, <code>maw panes</code>) ก่อนสรุป ข้อมูลชิ้นเดียวมักทำให้เข้าใจผิด</li>
+          </ul>
+
+          <p>
+            วิธีนี้อาจดูช้า แต่ปัญหาส่วนใหญ่ใน Gale Workflow ที่ใช้เวลานานแก้คือปัญหาที่แก้ผิด hypothesis ตั้งแต่ต้น
+            การ reproduce และ trace อย่างเป็นระบบมักพา path สั้นกว่าการลอง fix แบบ trial-and-error
+          </p>
+
+          <h2 id="section-2">15.2 Decision Tree ตามชั้น</h2>
+          <p>
+            อาการต่าง ๆ ใน Gale Workflow มักระบุชั้นที่มีปัญหาได้ค่อนข้างชัด
+            ตารางด้านล่างช่วยจำแนกอาการและ layer ที่ต้องตรวจก่อน
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>อาการ</th>
+                <th>Layer ที่น่าสงสัย</th>
+                <th>คำสั่งตรวจแรก</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>L2 ไม่ตอบสนอง, ไม่ส่ง DONE-ping</td>
+                <td>L2 Session</td>
+                <td><code>maw panes</code>, <code>maw capture 01-my-oracle:sprint-x.1</code></td>
+              </tr>
+              <tr>
+                <td>Worker ค้าง ไม่ commit</td>
+                <td>L3 Worker</td>
+                <td><code>maw capture worker-1</code>, ดู CMD ว่า <code>node</code> หรือ <code>bash</code></td>
+              </tr>
+              <tr>
+                <td>Engine ผิด (spawn เป็น Claude แทน OMX)</td>
+                <td>maw config</td>
+                <td><code>maw panes</code> ดู CMD; ตรวจ <code>commands.omx</code> ใน config</td>
+              </tr>
+              <tr>
+                <td>tool call ถูกบล็อก ไม่รู้สาเหตุ</td>
+                <td>pre-guard hook</td>
+                <td>อ่าน pre-guard output ใน session log</td>
+              </tr>
+              <tr>
+                <td>Context ผิด — L2 load project ผิด</td>
+                <td>CLAUDE.md / cwd</td>
+                <td>ตรวจ cwd ของ pane, ดู prompt-inject output</td>
+              </tr>
+              <tr>
+                <td>Docker service ล้มหลัง deploy</td>
+                <td>Container / Code</td>
+                <td><code>docker compose ps</code>, <code>docker compose logs --tail=50</code></td>
+              </tr>
+              <tr>
+                <td>Pane เกิดขึ้นเองไม่รู้จัก</td>
+                <td>Ghost-clone / Daemon</td>
+                <td><code>maw panes</code>, <code>ls ~/.claude/jobs/*/state.json</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TD
+  A[อาการผิดปกติ] --&gt; B{ระบุ layer}
+  B --&gt;|L1 ไม่ตอบ| C[ตรวจ session alive - maw panes]
+  B --&gt;|L2 ค้าง| D[maw capture L2 pane]
+  B --&gt;|L3 ไม่ commit| E[maw capture worker pane]
+  B --&gt;|tool ถูกบล็อก| F[อ่าน pre-guard log]
+  B --&gt;|Docker ล้ม| G[docker compose ps + logs]
+  B --&gt;|pane ลึกลับ| H[ตรวจ ghost-clone]
+
+  C --&gt; I{pane alive?}
+  I --&gt;|ใช่ แต่ไม่ตอบ| J[capture output]
+  I --&gt;|ไม่ - ตาย| K[on-stop ping ถึงหรือเปล่า]
+
+  D --&gt; L{spinner active?}
+  L --&gt;|ใช่| M[รอ หรือ nudge]
+  L --&gt;|ไม่ - stuck| N[re-spawn worker]
+
+  E --&gt; O{CMD = node?}
+  O --&gt;|ใช่ omx working| P[รอ]
+  O --&gt;|bash = ตาย| N
+
+  H --&gt; Q[purge failed jobs]
+  Q --&gt; R[kill pane ที่ไม่รู้จัก]</div>
+            <figcaption><strong>ภาพที่ 15.1: troubleshooting decision tree ตาม layer</strong><span>ระบุ layer ก่อน แล้วใช้คำสั่งที่เหมาะกับ layer นั้น</span></figcaption>
+          </figure>
+
+          <h2 id="section-3">15.3 Zombie Panes — ENOENT จาก maw done ผิดที่</h2>
+          <p>
+            Zombie pane เกิดเมื่อ pane รัน <code>maw done</code> บน window ของตัวเอง
+            <code>maw done</code> ลบ worktree ซึ่งก็คือ directory ที่ pane กำลังทำงานอยู่
+            ผลคือทุก command ถัดมาใน pane นั้น fail ด้วย ENOENT (No such file or directory)
+            แต่ pane ยังคงเปิดอยู่เป็น "zombie" ที่ทำอะไรไม่ได้
+          </p>
+          <p>
+            วิธีป้องกันคือ <strong>รัน <code>maw done &lt;window&gt;</code> จาก pane ภายนอกเสมอ</strong>
+            โดย L1 oracle pane เป็นผู้รัน <code>maw done</code> ให้กับ L2 worktree window
+            หลังจาก L2 ส่ง DONE-ping และ L1 merge PR เรียบร้อยแล้ว
+          </p>
+
+          <pre><code># ผิด — L2 รัน maw done บน window ตัวเอง (ห้าม!)
+# (ใน pane 01-my-oracle:sprint-x.1)
+maw done sprint-x   # ← บล็อก cwd ตัวเอง → ENOENT zombie
+
+# ถูก — L1 รัน maw done จาก pane ภายนอก
+# (ใน pane 01-my-oracle:my-oracle.1 — L1 oracle pane)
+maw done sprint-x   # ← ปลอดภัย L1 อยู่คนละ window
+
+# ถ้าเกิด zombie pane แล้ว — วิธีกู้
+# kill window โดยตรงผ่าน tmux (via maw)
+maw tmux kill 01-my-oracle:sprint-x.1
+# แล้วลบ worktree เองด้วยมือ (ถ้า maw done ไม่ทำงาน)
+git worktree remove --force /path/to/worktree</code></pre>
+
+          <p>
+            ข้อสังเกตสำคัญ: zombie pane อาจทำให้ tmux window ค้างอยู่โดยไม่มีประโยชน์
+            ตรวจด้วย <code>maw panes</code> และ kill pane ที่ CMD เป็น <code>bash</code> และไม่มีกิจกรรม
+          </p>
+
+          <h2 id="section-4">15.4 Failed Respawn Jobs — Daemon Retry Loop</h2>
+          <p>
+            หลังจาก tmux server ตายหรือ WSL ดับกะทันหัน daemon ของ Gale Workflow
+            อาจ retry job ที่มี state "failed" ซ้ำแล้วซ้ำเล่าโดยไม่หยุด
+            แต่ละ retry เปิด pane ใหม่ใน tmux window ที่ active อยู่ในขณะนั้น
+            ทำให้ window เต็มไปด้วย pane ลึกลับที่ไม่มีงานจริง ๆ
+          </p>
+          <p>
+            วิธีแก้คือ purge job ที่ fail แล้วออกจาก <code>~/.claude/jobs/</code>
+            ใช้การย้ายไป <code>/tmp</code> แทนการลบ เพื่อให้ history ยังอยู่ตาม Principle "Nothing is Deleted"
+          </p>
+
+          <pre><code># ตรวจหา failed jobs
+ls ~/.claude/jobs/
+cat ~/.claude/jobs/*/state.json | grep -E '"state"'
+
+# ตัวอย่าง output:
+# {"state":"failed","name":"sprint-x-worker","..."}
+# {"state":"failed","name":"old-infra-task","..."}
+
+# Purge failed jobs (ย้ายไป /tmp ไม่ใช่ rm -rf)
+mv ~/.claude/jobs/sprint-x-worker-xxx/ /tmp/jobs-archive/
+mv ~/.claude/jobs/old-infra-task-yyy/ /tmp/jobs-archive/
+
+# ตรวจว่า daemon หยุด retry แล้ว
+maw panes   # ไม่ควรมี pane ใหม่เกิดขึ้นอีก
+
+# ถ้า daemon ยังรันอยู่และ retry อีก ตรวจ process
+ps aux | grep maw</code></pre>
+
+          <p>
+            หลังจาก purge แล้วให้รัน <code>maw panes</code> เพื่อยืนยันว่าไม่มี pane ใหม่เกิดขึ้น
+            ถ้ายังมี — daemon อาจยังรันอยู่และหา job อื่นใน <code>~/.claude/jobs/</code>
+            ตรวจ directory ให้แน่ใจว่า state files ทั้งหมดที่เหลืออยู่ไม่ใช่ "failed"
+          </p>
+
+          <h2 id="section-5">15.5 Engine-Map Silent Fallback</h2>
+          <p>
+            ปัญหาที่พบบ่อยและ debug ยากที่สุดตัวหนึ่งคือ silent engine fallback
+            เมื่อ <code>maw team spawn -e omx</code> แต่ <code>omx</code> key ไม่มีใน maw config
+            maw จะ fallback ไปใช้ default engine โดยไม่แจ้งเตือน (silent)
+            ผลคือ spawn เป็น Claude แทน OMX โดยที่ไม่มี error message ใด ๆ
+          </p>
+          <p>
+            วิธีตรวจคือดู CMD ของ pane ด้วย <code>maw panes</code>:
+          </p>
+          <ul>
+            <li><code>CMD = node</code> — OMX กำลังรัน (ถูกต้องสำหรับ worker)</li>
+            <li><code>CMD = codex</code> — เป็น engine ผิด (ไม่ใช่ OMX)</li>
+            <li><code>CMD = bash</code> — engine ตายแล้ว pane กลายเป็น shell เปล่า</li>
+          </ul>
+
+          <pre><code># ตรวจ engine ของ worker pane
+maw panes
+# ดู CMD column ของ worker pane ที่ spawn ไป
+
+# ตัวอย่าง output ที่ถูกต้อง (OMX):
+# 01-my-oracle:sprint-x-worker-1.1  CMD=node  RUNNING
+
+# ตัวอย่าง output ที่ผิด (Claude แทน OMX):
+# 01-my-oracle:sprint-x-worker-1.1  CMD=claude  RUNNING
+
+# ตรวจ maw config — ดู key omx
+cat ~/.config/maw/config.json | grep -A3 '"commands"'
+# ต้องมี "omx": "..." อยู่ใน commands map
+
+# ถ้าไม่มี key — เพิ่มลงใน config
+# "omx": "/usr/local/bin/omx-launch"</code></pre>
+
+          <blockquote>
+            <p>
+              ก่อน spawn worker ทุกครั้ง ให้ verify ว่า key <code>omx</code> มีอยู่ใน maw config
+              เป็น pre-flight check ที่ใช้เวลาไม่ถึง 5 วินาทีแต่ป้องกันปัญหาที่ debug ยากมาก
+            </p>
+          </blockquote>
+
+          <h2 id="section-6">15.6 OMX Spawn Race — "submit FAILED" เป็น False Negative</h2>
+          <p>
+            เมื่อ spawn OMX worker ด้วย <code>maw team spawn --exec --prompt "..."</code>
+            บางครั้ง terminal แสดงข้อความ <code>submit FAILED</code> ซึ่งทำให้ดูเหมือน brief ไม่ได้ส่ง
+            แต่ในความเป็นจริง นี่มักเป็น false negative
+          </p>
+          <p>
+            เหตุผลคือ OMX engine ไม่รับ <code>--system-prompt-file</code> เหมือน Claude
+            brief ถูกส่งผ่านกลไกอื่น — spawn-prompt file และ auto-kickoff
+            <code>submit FAILED</code> มักแปลว่า harness พยายาม submit ผ่านช่องทางที่ไม่รองรับ
+            แต่ brief ยังถึง worker ผ่านช่องทางที่ถูกต้องอยู่
+          </p>
+
+          <pre><code># ตรวจว่า worker ได้รับ brief หรือเปล่า (แม้เห็น submit FAILED)
+# วิธีที่ถูกต้องคือ capture output ของ worker
+maw capture 01-my-oracle:sprint-x-worker-1.1 --lines 30
+
+# ถ้า worker กำลังอ่าน brief หรือ Working — brief ถึงแล้ว ไม่ต้อง nudge
+# ถ้า worker ยังว่าง (ไม่มีกิจกรรม) หลังจากรอ ~30 วินาที — nudge ด้วย:
+maw hey 01-my-oracle:sprint-x-worker-1.1 "read /path/to/brief.md and begin"
+
+# ตรวจ spawn-prompt file ว่ามีเนื้อหา
+cat .maw/briefs/worker-1.md</code></pre>
+
+          <p>
+            สรุป: อย่ากระโดดไป nudge worker ทันทีที่เห็น <code>submit FAILED</code>
+            รอ 30-60 วินาทีแล้ว capture output ก่อน ถ้า worker กำลัง Working ก็ไม่ต้องทำอะไร
+            การ nudge worker ที่กำลังทำงานอยู่แล้วอาจทำให้ confused และ restart งานจากต้น
+          </p>
+
+          <h2 id="section-7">15.7 Worker Stalls — Monitor by Status Cadence</h2>
+          <p>
+            Worker stall (ค้างโดยไม่มีความคืบหน้า) เป็นปัญหาที่ต้องการ detection เร็วแต่ไม่ควร poll บ่อยเกินไป
+            pattern ที่ถูกต้องคือ <strong>monitor by status cadence</strong> — ตรวจทุก ~5 นาที ไม่ใช่ทุกนาที
+          </p>
+          <p>
+            <code>maw team status &lt;team&gt;</code> เป็นจุดเริ่มต้นแต่ไม่น่าเชื่อถือสำหรับ OMX workers
+            (มักแสดง idle แม้ worker กำลังทำงาน) ถ้า status แสดงผลน่าสงสัยให้ใช้ <code>maw capture</code>
+            เป็น source of truth แทน
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>อาการ</th>
+                <th>สาเหตุที่เป็นไปได้</th>
+                <th>วิธีแก้</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Worker ไม่มี commit หลัง 15 นาที</td>
+                <td>Stall, รอ input, หรือตาย</td>
+                <td><code>maw capture</code> ดู output; nudge หรือ re-spawn</td>
+              </tr>
+              <tr>
+                <td>CMD = bash แทน node</td>
+                <td>OMX engine ตาย</td>
+                <td>re-spawn worker: <code>maw team spawn</code></td>
+              </tr>
+              <tr>
+                <td>Worker commit ผิด branch</td>
+                <td>Brief ไม่ชัด หรือ worktree overlap</td>
+                <td><code>git log</code> ใน worktree; cherry-pick ไปยัง branch ที่ถูก</td>
+              </tr>
+              <tr>
+                <td>submit FAILED ซ้ำ ๆ</td>
+                <td>Engine-map key หาย หรือ spawn race</td>
+                <td>ตรวจ config; capture worker; nudge ถ้ารอ 60s แล้วยังว่าง</td>
+              </tr>
+              <tr>
+                <td>Zombie pane เต็ม window</td>
+                <td>maw done รันในตัวเอง หรือ failed respawn</td>
+                <td>kill pane ด้วย <code>maw tmux kill</code>; purge job ใน ~/.claude/jobs/</td>
+              </tr>
+              <tr>
+                <td>maw workon load context ผิด project</td>
+                <td>cwd ผิด หรือ prompt-inject hook ไม่ทำงาน</td>
+                <td>ตรวจ cwd ของ pane; ตรวจ hook settings.json</td>
+              </tr>
+              <tr>
+                <td>Hook บล็อก command ที่ควรอนุญาต</td>
+                <td>pre-guard pattern ครอบคลุมเกิน</td>
+                <td>ดู hook output; แก้ regex ใน pre-guard.sh</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <pre><code># Protocol — worker stall response
+# 1. ตรวจ status (รู้ว่า unreliable สำหรับ omx)
+maw team status sprint-x
+
+# 2. Capture ก่อนเสมอ — อย่าพึ่งแค่ status
+maw capture 01-my-oracle:sprint-x-worker-1.1 --lines 50
+
+# 3. ดู CMD
+maw panes | grep worker-1
+
+# 4a. ถ้า CMD=node และมี output — worker ยังทำงาน รอต่อ
+# 4b. ถ้า CMD=node แต่ไม่มี output นาน — nudge ด้วย maw hey
+maw hey 01-my-oracle:sprint-x-worker-1.1 "status? ยังทำงานอยู่ไหม"
+
+# 4c. ถ้า CMD=bash — ตาย re-spawn
+maw team spawn sprint-x worker-1 --wt --engine omx --exec \
+  --prompt "Issue #N: resume from last commit. Previous work: git log."</code></pre>
+
+          <p>
+            การ re-spawn worker ที่ตาย ควรระบุใน brief ว่า "resume from last commit"
+            เพื่อให้ worker ใหม่เริ่มจาก git state ปัจจุบัน ไม่ใช่เริ่มจากต้น
+            <code>git log --oneline -5</code> ใน worktree ช่วยบอก context ที่ worker ทำมาแล้ว
+          </p>
+
+          <h2 id="section-8">สรุปบทที่ 15</h2>
+          <p>
+            Troubleshooting ใน Gale Workflow มีโครงสร้างที่ชัดเจน — ระบุ layer ก่อน แล้วใช้เครื่องมือที่เหมาะกับ layer นั้น
+            debug mantra (reproduce → trace → falsify → cross-reference) ป้องกันการ fix ผิด hypothesis
+            ซึ่งเป็นสาเหตุหลักที่ทำให้ปัญหาใน multi-layer system ใช้เวลาแก้นาน
+          </p>
+          <p>
+            ปัญหาที่พบบ่อยที่สุดคือ zombie panes จาก <code>maw done</code> ผิดที่,
+            failed respawn jobs ที่ daemon retry ไม่หยุด, engine-map silent fallback,
+            และ OMX spawn race ที่แสดง <code>submit FAILED</code> แบบ false negative
+            ทุกปัญหาเหล่านี้มี pattern การตรวจและแก้ที่ชัดเจน สิ่งสำคัญคืออย่า panic และ capture ข้อมูลก่อน action
+          </p>
+          <p>
+            Fleet ที่ stable ในระยะยาวต้องมาจาก disciplined monitoring ไม่ใช่ reactive firefighting
+            monitor by cadence ตาม schedule ไม่ใช่รอให้มีปัญหาแล้วค่อยตาม
+            และเมื่อพบปัญหา ให้ document ไว้ใน ψ vault หรือ retro เพื่อให้ pattern นั้นไม่เกิดซ้ำในสภาพแวดล้อมเดิม
+          </p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch14.html">← Fleet &amp; Multi-Oracle</a>
+          <a class="button primary" href="index.html">กลับสารบัญ →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

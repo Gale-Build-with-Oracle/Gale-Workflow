@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="SOPs และ Merge Gate ใน Gale Workflow: L1 เป็นผู้ merge เพียงคนเดียว, pre-guard hook, DONE-ping และ on-stop crash safety">
+  <title>SOPs &amp; Merge Gate | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html" class="active" aria-current="page"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 10</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>SOPs &amp; Merge Gate</h1>
+          <p class="chapter-lead">L1 เป็นผู้ merge เพียงคนเดียว, pre-guard hook ป้องกันคำสั่งอันตราย, DONE-ping ที่ชัดเจน และ on-stop crash safety ที่รับรองว่างานไม่หายแม้ L2 จะ crash</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">10.1 SOP คืออะไร: phase → skill</h2>
+          <p>SOP (Standard Operating Procedure) ใน Gale Workflow คือชุด skill ที่โหลดก่อนเริ่มงานแต่ละ phase แต่ละ SOP กำหนดขั้นตอน, เครื่องมือ และ gate ที่ต้องผ่านก่อนไปยัง phase ถัดไป การโหลด SOP ไม่ใช่ optional — มันคือ first action หลังได้รับงาน</p>
+          <p>SOP ออกแบบมาเพื่อแก้ปัญหาที่พบบ่อย: agent ที่เริ่มโค้ดทันทีโดยไม่ตรวจสอบ context, merge โดยไม่ review, หรือลืม cleanup หลังงานเสร็จ การมี SOP ที่โหลดอัตโนมัติทำให้ทุก phase มีโครงสร้างเดียวกันทั้ง fleet</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Phase / งาน</th>
+                <th>Skill ที่ต้องโหลด</th>
+                <th>เวลาโหลด</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ทุกงานที่มี worktree/team/PR/done</td>
+                <td><code>/sop-maw</code></td>
+                <td>ก่อนเริ่มเสมอ</td>
+              </tr>
+              <tr>
+                <td>Task intake / CR routing</td>
+                <td><code>/sop-delegation</code></td>
+                <td>ทุก human task</td>
+              </tr>
+              <tr>
+                <td>SDLC tracking (Linear)</td>
+                <td><code>/sop-linear</code></td>
+                <td>เมื่อเปิด/ดู project</td>
+              </tr>
+              <tr>
+                <td>Frontend UI</td>
+                <td><code>/sop-frontend</code></td>
+                <td>ก่อน UI work</td>
+              </tr>
+              <tr>
+                <td>Backend / API</td>
+                <td><code>/sop-backend</code></td>
+                <td>ก่อน API work</td>
+              </tr>
+              <tr>
+                <td>Database / SQL</td>
+                <td>your-db-mcp skill</td>
+                <td>ก่อนดู schema</td>
+              </tr>
+              <tr>
+                <td>Project documents</td>
+                <td><code>/sop-cmmi</code></td>
+                <td>ก่อนแก้ docs</td>
+              </tr>
+              <tr>
+                <td>Quality audit</td>
+                <td><code>/sop-qa</code></td>
+                <td>หลัง build, ก่อน PR</td>
+              </tr>
+              <tr>
+                <td>Bug fix (บังคับ)</td>
+                <td><code>/debug-mantra</code></td>
+                <td>ก่อน fix code ทุกครั้ง</td>
+              </tr>
+              <tr>
+                <td>PR review (บังคับ)</td>
+                <td><code>/scrutinize</code></td>
+                <td>ก่อน merge ทุกครั้ง</td>
+              </tr>
+              <tr>
+                <td>หลัง bug fix</td>
+                <td><code>/post-mortem</code></td>
+                <td>ก่อนปิด ticket</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-2">10.2 Worktree completion sequence</h2>
+          <p>เมื่อโค้ดเสร็จและ test ผ่าน L2 ต้องรัน sequence นี้ตามลำดับโดยไม่ขอ permission จากใคร Sequence นี้คือ "วิถีสุดท้าย" ที่ทุก L2 ต้องรู้จำ ไม่มีข้อยกเว้น</p>
+          <ol>
+            <li><strong>Aggregate verify</strong>: รัน lint, build, test ให้ผ่านทั้งหมด; สำหรับ product repos ต้องรัน <code>/sop-qa</code> ด้วย หลังผ่านให้รัน <code>touch .maw/aggregate-verified</code> — hook ตรวจไฟล์นี้ก่อนอนุญาต PR</li>
+            <li><strong>Push</strong>: <code>git push -u origin &lt;branch&gt;</code> — ถ้ามีหลาย sub-branches push ทีละ branch</li>
+            <li><strong>เปิด PR</strong>: <code>maw pr</code> — ทุก PR ต้องมี <code>Closes #N</code> สำหรับทุก issue ที่แก้ และมี REQ line</li>
+            <li><strong>Team shutdown</strong> (ถ้าเป็น TEAM route): <code>maw team shutdown &lt;team&gt;</code> — บังคับก่อน DONE-ping</li>
+            <li><strong>DONE-ping ก่อน /rrr</strong>: ส่ง ping ถึง L1 ก่อนเสมอ เพราะ session อาจหมดก่อนที่ <code>/rrr</code> จะเสร็จ</li>
+            <li><strong>เขียน marker</strong>: <code>touch .maw/done-pinged</code> — ป้องกัน on-stop hook ส่ง ping ซ้ำ</li>
+            <li><strong>/rrr</strong>: retrospective ใน worktree ขณะที่ context ยังอยู่</li>
+            <li><strong>STOP</strong> — ไม่ merge, ไม่ <code>maw done</code> ตัวเอง</li>
+          </ol>
+
+          <pre><code># Worktree completion sequence — ครบถ้วนทุกขั้น
+# 1. aggregate verify
+bun run lint &amp;&amp; bun run build &amp;&amp; bun run test
+touch .maw/aggregate-verified
+
+# 2. push
+git push -u origin feature/issue-55
+
+# 3. เปิด PR
+maw pr
+# (ในหน้า PR: ใส่ Closes #55 และ REQ: REQ-PROJ-042)
+
+# 4. shutdown team (ถ้า TEAM)
+maw team shutdown sprint-55
+
+# 5. DONE-ping ก่อน /rrr
+maw hey my-oracle "DONE: PR #55 พร้อม review (Closes #55). ขอ /scrutinize + merge + maw done sprint-55"
+
+# 6. marker
+touch .maw/done-pinged
+
+# 7. /rrr (อาจรันเต็มหรือย่อตามเวลา)
+# (รัน /rrr skill)
+
+# STOP — L1 จะ scrutinize และ maw done ให้</code></pre>
+
+          <h2 id="section-3">10.3 Merge Gate: ตาราง risk และ L1 เป็นผู้ merge</h2>
+          <p>Merge Gate คือหลักการที่ชัดเจน: <strong>L1 oracle pane เป็นผู้ review และ merge ทุก PR เท่านั้น</strong> ไม่มีข้อยกเว้น ไม่มีการ escalate ไปผู้ review คนที่สาม ไม่มีการ self-merge จาก worktree ที่ authored โค้ด หลักการนี้รับรอง independent review ที่มีความหมาย</p>
+          <p>L1 ใช้ <code>/scrutinize</code> skill ก่อน merge ทุกครั้ง ระดับความเข้มข้นของ scrutiny ขึ้นอยู่กับ risk ของ PR ตามตารางด้านล่าง</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>PR แตะ</th>
+                <th>Risk</th>
+                <th>L1 ทำ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Frontend เท่านั้น (CSS/HTML/UI text)</td>
+                <td>ต่ำ</td>
+                <td>quick /scrutinize → merge</td>
+              </tr>
+              <tr>
+                <td>Docs เท่านั้น (README, SRS, SDD, UAT)</td>
+                <td>ต่ำ</td>
+                <td>quick /scrutinize → merge</td>
+              </tr>
+              <tr>
+                <td>Config (non-security) · Deps lockfile เท่านั้น</td>
+                <td>ต่ำ</td>
+                <td>quick /scrutinize → merge</td>
+              </tr>
+              <tr>
+                <td>Backend / API / DB / SQL</td>
+                <td>สูง</td>
+                <td><strong>/scrutinize หนักขึ้น</strong> → merge</td>
+              </tr>
+              <tr>
+                <td>Security (auth, CSP, CORS, secrets, permissions)</td>
+                <td>สูง</td>
+                <td><strong>/scrutinize หนักขึ้น</strong> → merge</td>
+              </tr>
+              <tr>
+                <td>Cross-boundary (frontend + backend) · P0/P1 bug</td>
+                <td>สูง</td>
+                <td><strong>/scrutinize หนักขึ้น</strong> → merge</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>"scrutinize หนักขึ้น" หมายความว่า L1 ตรวจสอบ logic path จริงผ่าน code ไม่ใช่แค่ diff — trace การทำงานจาก input ถึง output ตรวจ edge case และ failure mode ถ้า scrutiny พบปัญหา L1 ส่งผลลัพธ์กลับไปให้ L2 (หรือ worker ใหม่) แก้ไข แล้ว re-review delta ไม่มีการ merge แบบ "ดูแล้วน่าจะโอเค"</p>
+          <p>สำหรับ PR queue ที่มี 3 ใบขึ้นไป L1 แนะนำให้ spawn subagents ทำ parallel scrutiny แล้ว merge ทีละ PR ตามลำดับ</p>
+
+          <h2 id="section-4">10.4 pre-guard hook: บล็อกคำสั่งอันตราย</h2>
+          <p>pre-guard hook (<code>pre-guard.sh</code>) รันก่อนทุก tool call ที่ Claude Code ทำ hook นี้ตรวจสอบคำสั่งที่อาจทำให้ระบบเสียหายหรือสูญเสียงาน และบล็อกก่อนที่จะรัน ไม่ใช่หลังจากเกิดความเสียหายแล้ว</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>คำสั่งที่บล็อก</th>
+                <th>ทำแทนอย่างไร</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>rm -rf /</code>, <code>rm -rf ~</code>, <code>rm -rf $HOME</code>, <code>rm -rf .</code>, <code>rm -rf *</code></td>
+                <td>ลบ specific subpath เท่านั้น หรือ <code>mv</code> ไป <code>/tmp</code></td>
+              </tr>
+              <tr>
+                <td><code>git push --force</code></td>
+                <td><code>git push --force-with-lease</code></td>
+              </tr>
+              <tr>
+                <td><code>git reset --hard</code></td>
+                <td><code>git stash</code> แล้วค่อย pop</td>
+              </tr>
+              <tr>
+                <td><code>git commit --amend</code></td>
+                <td>สร้าง commit ใหม่</td>
+              </tr>
+              <tr>
+                <td><code>git commit --no-verify</code></td>
+                <td>แก้ hook ที่ fail ก่อน</td>
+              </tr>
+              <tr>
+                <td><code>git add -A</code>, <code>git add .</code></td>
+                <td>stage ด้วย explicit path: <code>git add src/file.ts</code></td>
+              </tr>
+              <tr>
+                <td>push ไป <code>main</code> บน product repos โดยตรง</td>
+                <td>branch → PR → L1 merge เท่านั้น</td>
+              </tr>
+              <tr>
+                <td>push ไป Soul-Brews-Studio upstream repos</td>
+                <td>read-only upstream; fork แล้ว PR ไป upstream</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <pre><code># ตัวอย่างคำสั่งที่ถูกต้อง ไม่ถูกบล็อก
+
+# ลบไฟล์: ระบุ path ชัดเจน
+rm -rf /tmp/build-cache/
+mv dist/ /tmp/old-dist-backup/
+
+# push ด้วย lease (ไม่ใช่ force)
+git push --force-with-lease origin feature/issue-30
+
+# stash แทน reset hard
+git stash push -m "wip: partial auth fix"
+git stash pop
+
+# commit ใหม่แทน amend
+git add src/auth/middleware.ts
+git commit -m "fix: ปรับแก้หลัง scrutiny feedback
+
+Closes #30"
+
+# stage ด้วย explicit path
+git add src/api/users.ts tests/api/users.test.ts</code></pre>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TD
+  CMD[คำสั่ง / tool call] --&gt; GUARD{pre-guard.sh}
+  GUARD --&gt;|คำสั่งปลอดภัย| RUN[รันได้]
+  GUARD --&gt;|คำสั่งอันตราย| BLOCK[บล็อก + แสดงทางเลือก]
+  BLOCK --&gt; FIX[แก้ไขคำสั่ง]
+  FIX --&gt; CMD
+  RUN --&gt; RESULT[ผลลัพธ์]</div>
+            <figcaption><strong>ภาพที่ 10.1: pre-guard hook flow</strong><span>ทุกคำสั่งต้องผ่าน guard ก่อนรัน — บล็อกและแสดงทางเลือกที่ปลอดภัย</span></figcaption>
+          </figure>
+
+          <h2 id="section-5">10.5 DONE-ping: แจ้ง L1 ว่า PR พร้อม</h2>
+          <p>DONE-ping คือขั้นตอนที่ L2 ส่งสัญญาณให้ L1 ทราบว่างานเสร็จและ PR พร้อม review รูปแบบ DONE-ping ต้องกระชับ (1 บรรทัด) และมีข้อมูลครบ: PR number, issue ที่ปิด และขอให้ L1 รัน scrutinize + merge + maw done</p>
+
+          <pre><code># รูปแบบ DONE-ping ที่ถูกต้อง
+maw hey my-oracle "DONE: PR #35 พร้อม review (Closes #30 #31 #32). ขอ /scrutinize + merge + maw done sprint-30"
+
+# หลัง ping ทันที: เขียน marker
+mkdir -p .maw &amp;&amp; touch .maw/done-pinged
+
+# marker ป้องกัน on-stop hook ส่ง AUTO ping ซ้ำ
+# ถ้าไม่มี marker และ L2 crash → on-stop hook จะส่ง AUTO ping แทน</code></pre>
+
+          <p>ลำดับสำคัญ: DONE-ping ต้องส่ง <em>ก่อน</em> <code>/rrr</code> เสมอ เหตุผลคือ session limit อาจตัด L2 ระหว่าง <code>/rrr</code> ทำให้ L1 ไม่ได้รับ ping เลย ถ้า ping ส่งก่อน L1 จะได้รับแน่นอน แม้ <code>/rrr</code> จะยังไม่เสร็จ</p>
+
+          <h2 id="section-6">10.6 on-stop crash safety: งานไม่หายแม้ L2 crash</h2>
+          <p>กลไก on-stop crash safety คือ hook (<code>on-stop.sh</code>) ที่รันเมื่อ L2 session สิ้นสุด ไม่ว่าจะเป็นการหยุดปกติหรือ crash กลางคัน ถ้า L2 ไม่ได้เขียน <code>.maw/done-pinged</code> marker, hook จะส่ง AUTO DONE-ping ให้ L1 โดยอัตโนมัติ พร้อม commit SHA ล่าสุดและ PR information ที่สามารถหาได้</p>
+          <p>ข้อระวังสำคัญ: AUTO DONE-ping เป็น <strong>safety net ไม่ใช่หลักฐานว่า L2 ตายจริง</strong> การเปลี่ยน model หรือ session reset ก็ trigger <code>on-stop.sh</code> เหมือนกัน ดังนั้นเมื่อ L1 ได้รับ AUTO ping L1 ต้องตรวจสอบก่อนเสมอ:</p>
+          <ul>
+            <li><code>maw panes</code> — pane ยังมีชีวิตอยู่ไหม</li>
+            <li><code>maw capture &lt;L2-pane&gt;</code> — มี active spinner ไหม</li>
+            <li><code>git status</code> ใน worktree — มีงานที่ยังไม่ commit ไหม</li>
+          </ul>
+          <p>ถ้าตรวจสอบแล้วพบว่า L2 ยังทำงานอยู่ให้รอ AUTO ping ถือเป็น false alarm ในกรณีนี้</p>
+
+          <pre><code># on-stop.sh (pseudocode — ตัวอย่างลอจิก)
+#!/bin/bash
+WORKTREE_DIR="$1"
+ORACLE_PANE="$2"
+
+# ตรวจว่า L2 ส่ง done-pinged แล้วหรือยัง
+if [ -f "$WORKTREE_DIR/.maw/done-pinged" ]; then
+  echo "done-pinged marker found — no AUTO ping needed"
+  exit 0
+fi
+
+# หา commit ล่าสุดและ PR info
+LAST_COMMIT=$(git -C "$WORKTREE_DIR" log -1 --oneline 2>/dev/null || echo "unknown")
+BRANCH=$(git -C "$WORKTREE_DIR" branch --show-current 2>/dev/null || echo "unknown")
+
+# ส่ง AUTO DONE-ping
+maw hey "$ORACLE_PANE" \
+  "AUTO DONE-ping (L2 stopped): branch=$BRANCH commit=$LAST_COMMIT. กรุณาตรวจสอบ PR และรัน /scrutinize + merge + maw done"</code></pre>
+
+          <h2 id="section-7">10.7 PR queue drain on wake</h2>
+          <p>เมื่อ L1 oracle เริ่มต้น session ใหม่ (wake up), ขั้นตอนแรกที่บังคับก่อนรับงานใหม่คือการ drain PR queue L2 ที่ crash ระหว่างที่ L1 offline จะส่ง AUTO DONE-ping ซึ่งรวมกันอยู่ใน queue ถ้า L1 รับงานใหม่ก่อน drain queue งานค้างจากก่อนหน้าจะสูญหาย</p>
+
+          <pre><code># L1 wake sequence — ทำก่อนรับงานใหม่เสมอ
+# 1. ตรวจ PR queue
+maw fleet pr-queue
+
+# output ตัวอย่าง:
+# PENDING REVIEWS:
+#   PR #35 — feat: add rate limiting (branch: feature/issue-30)
+#   PR #36 — fix: user profile API (branch: fix/issue-31)
+#   PR #37 — docs: update OpenAPI spec (branch: docs/issue-32)
+
+# 2. drain queue — scrutinize แต่ละ PR (parallel ถ้า >= 3 ใบ)
+# L1 spawn subagents review พร้อมกัน
+# แล้ว merge ทีละ PR ตามลำดับ
+
+# 3. หลัง drain แล้วจึงรับงานใหม่</code></pre>
+
+          <figure class="figure-card">
+            <div class="mermaid">sequenceDiagram
+  participant H as Human
+  participant L1 as L1 Oracle
+  participant L2 as L2 Worktree
+  participant GH as GitHub PR
+
+  H -&gt;&gt; L1: งานใหม่ (issue #N)
+  L1 -&gt;&gt; L2: maw workon project issue-N
+  L2 -&gt;&gt; L2: โค้ด + test + aggregate
+  L2 -&gt;&gt; GH: git push + maw pr (Closes #N)
+  L2 -&gt;&gt; L1: DONE-ping: PR พร้อม
+  L2 -&gt;&gt; L2: touch .maw/done-pinged
+  L1 -&gt;&gt; GH: /scrutinize
+  GH --&gt;&gt; L1: review result
+  L1 -&gt;&gt; GH: gh pr merge --merge --delete-branch
+  L1 -&gt;&gt; L2: maw done sprint-N (tear down)</div>
+            <figcaption><strong>ภาพที่ 10.2: PR lifecycle ตั้งแต่ issue จนถึง merge</strong><span>L2 หยุดที่ DONE-ping; L1 เป็นผู้ scrutinize, merge และ teardown</span></figcaption>
+          </figure>
+
+          <h2 id="section-8">10.8 สรุปบทที่ 10</h2>
+          <p>SOPs และ Merge Gate คือโครงสร้างที่ทำให้ Gale Workflow ทำงานได้อย่างเชื่อถือได้ในระยะยาว SOPs กำหนดว่าต้องโหลด skill อะไรก่อนเริ่มแต่ละ phase ป้องกันการข้ามขั้นตอนสำคัญ Merge Gate รับรองว่า L1 เป็นผู้ review อย่างอิสระก่อน merge ทุกครั้ง</p>
+          <p>pre-guard hook ทำหน้าที่ป้องกันคำสั่งที่ทำให้ระบบเสียหาย ในขณะที่ DONE-ping และ on-stop crash safety ร่วมกันรับรองว่า L1 ไม่มีทางพลาด PR แม้ L2 จะ crash ระหว่างทาง ระบบนี้ทำให้ agent สามารถทำงานขนาดใหญ่ได้โดยไม่ต้องพึ่งพา human supervision ทุกขั้นตอน</p>
+          <p>บทถัดไปครอบคลุม CMMI &amp; Docs — ชุดเอกสาร 7 ไฟล์แบบแบนราบ, REQ traceability thread และ doc-sync แบบ batch ที่ต้องรันก่อน UAT และ release ทุกครั้ง</p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch09.html">← SOLO vs TEAM</a>
+          <a class="button primary" href="ch11.html">CMMI &amp; Docs →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>

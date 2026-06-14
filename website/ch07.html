@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="อ้างอิงคำสั่ง maw ฉบับเต็ม — ทำไม raw tmux ถูกบล็อก, hey/capture/panes และ engine map ใน Gale Workflow">
+  <title>maw-js Commands | Gale Workflow</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="book-layout">
+    <aside class="sidebar" aria-label="สารบัญ Gale Workflow">
+      <a class="brand" href="index.html">
+        <div class="brand-mark">ψ</div>
+        <div><strong>Gale Workflow</strong><span>3-Layer Ephemeral Oracle</span></div>
+      </a>
+      <nav class="side-nav">
+        <a href="ch00.html"><span>CH 00</span>บทนำ</a>
+        <a href="ch01.html"><span>CH 01</span>5 Principles</a>
+        <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
+        <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
+        <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
+        <a href="ch06.html"><span>CH 06</span>Skills System</a>
+        <a href="ch07.html" class="active" aria-current="page"><span>CH 07</span>maw-js Commands</a>
+        <a href="ch08.html"><span>CH 08</span>Delegation Tiers</a>
+        <a href="ch09.html"><span>CH 09</span>SOLO vs TEAM</a>
+        <a href="ch10.html"><span>CH 10</span>SOPs &amp; Merge Gate</a>
+        <a href="ch11.html"><span>CH 11</span>CMMI &amp; Docs</a>
+        <a href="ch12.html"><span>CH 12</span>Cross-Language</a>
+        <a href="ch13.html"><span>CH 13</span>Hooks เจาะลึก</a>
+        <a href="ch14.html"><span>CH 14</span>Fleet &amp; Multi-Oracle</a>
+        <a href="ch15.html"><span>CH 15</span>Troubleshooting</a>
+      </nav>
+      <div class="sidebar-footer">Gale Workflow technical docs</div>
+    </aside>
+    <main class="reader">
+      <div class="topbar"><a href="index.html">Gale Workflow</a><span>บทที่ 07</span></div>
+      <article class="chapter-shell">
+        <header class="chapter-header">
+          <h1>maw-js Commands</h1>
+          <p class="chapter-lead">อ้างอิงคำสั่ง maw ฉบับเต็ม — ทำไม raw tmux ถูกบล็อก, hey/capture/panes และ engine map</p>
+        </header>
+        <section class="chapter-content">
+
+          <h2 id="section-1">7.1 maw คืออะไร</h2>
+
+          <p>
+            maw-js คือ CLI ที่เป็น <strong>interface เดียว</strong> ระหว่าง oracle กับ tmux และ agents ทั้งหมด
+            แทนที่จะใช้คำสั่ง tmux โดยตรง ทุกการกระทำที่เกี่ยวกับ pane, window, session, และ agent
+            ต้องผ่าน maw เสมอ
+          </p>
+          <p>
+            เหตุผลหลักคือ maw ทำมากกว่าแค่ wrap tmux — มันจัดการ engine routing, audit trail, worktree lifecycle,
+            และ hook enforcement ด้วย การ bypass maw ด้วย raw tmux ทำให้ขาดการตรวจสอบเหล่านี้ทั้งหมด
+          </p>
+          <p>
+            maw ทำงานได้ทั้งจาก terminal ปกติและจาก agent session (Claude Code, Codex) ผ่าน Bash tool
+            คำสั่งที่ agent เรียกบ่อยที่สุดคือ <code>maw workon</code>, <code>maw hey</code>, <code>maw capture</code>, และ <code>maw panes</code>
+          </p>
+
+          <h2 id="section-2">7.2 ทำไม Raw tmux ถูกบล็อก</h2>
+
+          <p>
+            Gale Workflow บล็อก raw tmux commands (<code>tmux send-keys</code>, <code>tmux new-window</code>, <code>ps aux | grep</code>, <code>kill -9</code>)
+            ผ่าน pre-tool hook ที่ตรวจ Bash command ก่อนอนุญาตให้รัน
+            hooks เหล่านี้ถูกกำหนดใน Claude Code settings และทำงานอัตโนมัติทุก Bash call
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>สิ่งที่บล็อก</th>
+                <th>เหตุผล</th>
+                <th>ใช้แทนด้วย</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>tmux send-keys</code></td><td>ไม่มี audit trail, signed envelope</td><td><code>maw hey &lt;target&gt; "msg"</code></td></tr>
+              <tr><td><code>tmux new-window</code></td><td>ไม่ inject oracle identity, ไม่ตั้ง cwd ถูกต้อง</td><td><code>maw workon &lt;repo&gt; &lt;slug&gt;</code></td></tr>
+              <tr><td><code>kill -9 &lt;pid&gt;</code></td><td>อาจ kill agent ที่ยังทำงานอยู่</td><td><code>maw tmux kill &lt;target&gt;</code></td></tr>
+              <tr><td><code>ps aux | grep claude</code></td><td>ไม่แม่นยำ, ใช้แทน maw fleet ไม่ได้</td><td><code>maw panes</code></td></tr>
+              <tr><td><code>tmux kill-pane</code></td><td>ไม่ cleanup worktree</td><td><code>maw done &lt;window&gt;</code></td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            นอกจากเหตุผลด้านความถูกต้องแล้ว การใช้ maw ยังทำให้ audit log สมบูรณ์
+            ทุกการสื่อสาร agent-to-agent ถูกบันทึกพร้อม timestamp และ sender identity
+            ซึ่งช่วยมากเมื่อต้อง debug ว่าใครสั่งอะไรและเมื่อไหร่
+          </p>
+
+          <h2 id="section-3">7.3 Spawn/Isolate: workon, team spawn, wake, swarm</h2>
+
+          <p>
+            กลุ่มคำสั่ง spawn/isolate ใช้เปิด pane ใหม่หรือสร้าง worktree สำหรับงาน
+            คำสั่งที่ใช้บ่อยที่สุดคือ <code>maw workon</code> ซึ่งเป็น "work verb" ค่าเริ่มต้นสำหรับทุก task
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>คำสั่ง</th>
+                <th>ใช้เมื่อ</th>
+                <th>สิ่งที่เกิดขึ้น</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>maw workon &lt;repo&gt; &lt;slug&gt;</code></td>
+                <td>ทุก task บน product/infra repo (DEFAULT)</td>
+                <td>เปิด tmux window ใหม่ใน project dir; โหลด CLAUDE.md/AGENTS.md ของ project อัตโนมัติ; engine = Claude เสมอ</td>
+              </tr>
+              <tr>
+                <td><code>maw team spawn &lt;team&gt; &lt;role&gt; --wt --engine omx --exec --prompt "..."</code></td>
+                <td>spawn L3 OMX worker สำหรับ TEAM task</td>
+                <td>สร้าง fresh worktree + pane; inject brief ผ่าน spawn-prompt; auto-kickoff สำหรับ codex/omx</td>
+              </tr>
+              <tr>
+                <td><code>maw wake &lt;repo&gt; --wt &lt;slot&gt; -e &lt;engine&gt;</code></td>
+                <td>repo ที่ใช้บ่อยมาก (OPT-IN เท่านั้น)</td>
+                <td>idempotent: สร้าง worktree + branch + pane ถ้ายังไม่มี; warm worktree, fresh session</td>
+              </tr>
+              <tr>
+                <td><code>maw swarm &lt;engine1&gt; &lt;engine2&gt;</code></td>
+                <td>A/B compare engines เท่านั้น</td>
+                <td>shared-cwd, ไม่รองรับ --wt; ห้ามใช้สำหรับ parallel commits</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <blockquote>
+            <strong>กฎสำคัญ:</strong> <code>maw workon</code> pane เป็น Claude เสมอ — ห้าม force <code>--engine omx</code>
+            บน workon pane engine flag ใช้กับ <code>maw team spawn</code> เท่านั้น
+            workon pane คือ orchestrator (L2); team spawn pane คือ worker (L3)
+          </blockquote>
+
+          <h2 id="section-4">7.4 Communicate: hey, send-text, capture, panes</h2>
+
+          <p>
+            การสื่อสารระหว่าง agent กับ agent ทั้งหมดต้องผ่าน maw communicate commands
+            ห้ามใช้ raw <code>tmux send-keys</code> เพราะขาด signed envelope และ audit log
+          </p>
+
+          <pre><code># ส่ง message พร้อม Enter (signed inject)
+maw hey my-oracle "DONE: PR #42 ready for /scrutinize + merge"
+
+# maw send เป็น alias ของ maw hey
+maw send my-oracle "same as hey"
+
+# พิมพ์ข้อความ + กด Enter (ไม่มี envelope — ใช้สำหรับ compose text)
+maw send-text my-oracle "text without envelope"
+
+# อ่าน output ของ pane (capture ดีกว่า peek สำหรับ audit)
+maw capture worker-1 --lines 50
+
+# ดู pane output แบบ quick (ไม่บันทึก)
+maw peek worker-1
+
+# แสดง panes ทั้งหมดที่ active
+maw panes
+
+# แสดง ls ของ worktrees และ sessions
+maw ls
+</code></pre>
+
+          <p>
+            <code>maw capture</code> vs <code>maw peek</code>: capture บันทึกลง audit log และ return สมบูรณ์กว่า
+            ใช้ capture เมื่อต้องการ verify worker status หรือ debug
+            ใช้ peek เมื่อต้องการแค่ดูแบบเร็ว ๆ ไม่ต้องการ log
+          </p>
+          <p>
+            <strong>Anti-pattern ที่ต้องระวัง:</strong> อย่า poll ด้วย <code>maw capture</code> หลาย ๆ ครั้งติดกัน (serial capture polling)
+            ถ้าต้องการ monitor worker ให้ใช้ <code>maw team status &lt;team&gt;</code> ก่อน แล้ว capture เฉพาะเมื่อเห็น anomaly
+          </p>
+
+          <h2 id="section-5">7.5 Finish/Cleanup: pr, done, team shutdown</h2>
+
+          <p>
+            กลุ่มคำสั่ง finish/cleanup ใช้ปิดงานอย่างสะอาด ขั้นตอนที่ถูกต้องหลัง worker ส่ง DONE-ping คือ:
+            L1 scrutinize → merge → <code>maw done &lt;window&gt;</code> (จาก L1 pane)
+          </p>
+
+          <pre><code># เปิด PR จาก branch ปัจจุบัน (ต้องมี .maw/aggregate-verified สำหรับ TEAM)
+maw pr
+
+# ปิด worktree window + teardown (รันจาก L1/oracle pane เท่านั้น)
+maw done sprint-x-window
+
+# ปิด team workers + prune worktrees (MANDATORY หลังทุก TEAM batch)
+# รันจาก L2 pane หลัง PR open และก่อน DONE-ping
+maw team shutdown sprint-x
+
+# kill orphan panes ทั่ว fleet
+maw cleanup --zombie-agents
+
+# hide pane (ไม่ kill)
+maw tmux close &lt;target&gt;
+
+# kill pane (kill จริง)
+maw tmux kill &lt;target&gt;
+</code></pre>
+
+          <blockquote>
+            <strong>กฎที่สำคัญที่สุด:</strong> L2 worktree pane MUST NOT รัน <code>maw done</code> บน window ของตัวเอง
+            เพราะ <code>maw done</code> ลบ worktree = ลบ cwd ของตัวเอง → ทุก command ถัดไปจะ fail ด้วย ENOENT
+            และ window จะกลายเป็น zombie process
+            <code>maw done</code> เป็นหน้าที่ของ L1 oracle pane เสมอ
+          </blockquote>
+
+          <h2 id="section-6">7.6 Engine Map: Key ใน Config และ Silent Fallback</h2>
+
+          <p>
+            engine map คือ section <code>commands</code> ใน <code>~/.maw/config.json</code>
+            มันบอก maw ว่าเมื่อ spawn engine ชื่อ X ให้รัน binary อะไร
+            gotcha สำคัญ: ถ้า key ไม่มีอยู่ใน map maw จะ fallback ไป default engine โดยไม่มี error ใด ๆ
+          </p>
+
+          <pre><code>// ตัวอย่าง ~/.maw/config.json (generic)
+{
+  "version": "2.1.0",
+  "oracle": "my-oracle",
+  "session": "my-oracle-session",
+  "commands": {
+    "claude": "claude",
+    "codex": "codex",
+    "omx": "node /path/to/omx/bin/omx.js",
+    "omx-resume": "node /path/to/omx/bin/omx.js --resume",
+    "codex-resume": "codex --resume"
+  },
+  "defaults": {
+    "engine": "claude",
+    "worktree_base": "~/worktrees"
+  }
+}
+
+# ตรวจสอบ engine map ก่อน spawn
+cat ~/.maw/config.json | jq '.commands'
+
+# ตรวจ omx worker จริง ๆ ใช้ omx ไหม (CMD ควรเป็น 'node')
+maw panes
+# ถ้า CMD = 'claude' แทน 'node' = fallback เกิดขึ้น → ตรวจ key 'omx' ใน config
+
+# spawn omx worker
+maw team spawn sprint-x worker-1 \
+  --wt \
+  --engine omx \
+  --exec \
+  --prompt "Issue #15: implement refresh token rotation in src/middleware/auth.ts"
+</code></pre>
+
+          <p>
+            <strong>วิธีวินิจฉัย silent fallback:</strong> รัน <code>maw panes</code> แล้วดู column CMD
+            omx worker จริงจะมี <code>node</code> เป็น CMD เพราะ omx รันบน Node.js
+            ถ้าเห็น <code>claude</code> แสดงว่า key <code>omx</code> ไม่มีใน config หรือ path ผิด
+          </p>
+          <p>
+            นอกจาก <code>omx</code> และ <code>codex</code> แล้ว ต้องมี resume keys ด้วย:
+            <code>omx-resume</code> และ <code>codex-resume</code>
+            ถ้าขาด resume keys เมื่อ worker crash แล้ว maw พยายาม resume
+            ระบบจะ fallback ไปเปิด Claude แทน ทำให้ได้ engine ผิด
+          </p>
+
+          <h2 id="section-7">7.7 ตารางอ้างอิงคำสั่งเต็ม</h2>
+
+          <p>
+            ตารางด้านล่างรวมคำสั่ง maw ทั้งหมดที่ใช้บ่อย พร้อม alias และหมายเหตุสำคัญ
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>คำสั่ง</th>
+                <th>Alias</th>
+                <th>หน้าที่</th>
+                <th>หมายเหตุ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>maw workon &lt;repo&gt; &lt;slug&gt;</code></td><td>—</td><td>เปิด L2 worktree pane (DEFAULT work verb)</td><td>engine = Claude เสมอ, โหลด project CLAUDE.md</td></tr>
+              <tr><td><code>maw team create &lt;slug&gt;</code></td><td>—</td><td>ลงทะเบียน team roster</td><td>ทำก่อน team spawn</td></tr>
+              <tr><td><code>maw team spawn &lt;team&gt; &lt;role&gt; [opts]</code></td><td>—</td><td>spawn L3 OMX worker</td><td>ต้องมี --wt --engine omx --exec --prompt</td></tr>
+              <tr><td><code>maw team status &lt;team&gt;</code></td><td>—</td><td>ดูสถานะ workers ทั้งหมดของ team</td><td>omx แสดง idle แม้ทำงานอยู่ — verify ด้วย capture</td></tr>
+              <tr><td><code>maw team shutdown &lt;team&gt;</code></td><td>—</td><td>ปิด workers + prune worktrees</td><td>MANDATORY หลังทุก TEAM batch</td></tr>
+              <tr><td><code>maw wake &lt;repo&gt; --wt &lt;slot&gt;</code></td><td>—</td><td>warm worktree + fresh session (OPT-IN)</td><td>ใช้เฉพาะ high-frequency repo</td></tr>
+              <tr><td><code>maw swarm &lt;e1&gt; &lt;e2&gt;</code></td><td>—</td><td>A/B compare engines, shared-cwd</td><td>ห้ามใช้สำหรับ parallel commits</td></tr>
+              <tr><td><code>maw hey &lt;target&gt; "msg"</code></td><td><code>maw send</code></td><td>ส่ง message พร้อม Enter + signed envelope</td><td>default communication tool</td></tr>
+              <tr><td><code>maw send-text &lt;target&gt; "text"</code></td><td>—</td><td>พิมพ์ text + Enter ไม่มี envelope</td><td>ใช้สำหรับ compose text เท่านั้น</td></tr>
+              <tr><td><code>maw send-enter &lt;target&gt;</code></td><td>—</td><td>กด Enter เท่านั้น</td><td>ไม่ส่ง text</td></tr>
+              <tr><td><code>maw capture &lt;target&gt; [--lines N]</code></td><td>—</td><td>อ่าน pane output + บันทึก audit log</td><td>ใช้ verify worker status</td></tr>
+              <tr><td><code>maw peek &lt;target&gt;</code></td><td>—</td><td>อ่าน pane output แบบ quick</td><td>ไม่บันทึก log</td></tr>
+              <tr><td><code>maw panes</code></td><td><code>maw ls</code></td><td>แสดง panes ทั้งหมด + CMD column</td><td>ใช้ verify engine ที่ worker ใช้</td></tr>
+              <tr><td><code>maw pr</code></td><td>—</td><td>เปิด PR จาก current branch</td><td>ต้องมี .maw/aggregate-verified สำหรับ TEAM</td></tr>
+              <tr><td><code>maw done &lt;window&gt;</code></td><td>—</td><td>retro + kill window + remove worktree</td><td>รันจาก L1 เท่านั้น (ไม่ใช่จาก window เป้าหมาย)</td></tr>
+              <tr><td><code>maw cleanup --zombie-agents</code></td><td>—</td><td>kill orphan panes ทั่ว fleet</td><td>รันเมื่อมี pane ค้างโดยไม่มีเจ้าของ</td></tr>
+              <tr><td><code>maw tmux close &lt;target&gt;</code></td><td>—</td><td>hide pane (ไม่ kill)</td><td>—</td></tr>
+              <tr><td><code>maw tmux kill &lt;target&gt;</code></td><td>—</td><td>kill pane จริง</td><td>—</td></tr>
+              <tr><td><code>maw fleet pr-queue</code></td><td>—</td><td>ดู pending PRs ที่รอ review</td><td>ตรวจทุกครั้งเมื่อ wake/recap</td></tr>
+              <tr><td><code>maw --version</code></td><td>—</td><td>แสดง maw-js version</td><td>ใช้ verify install</td></tr>
+            </tbody>
+          </table>
+
+          <figure class="figure-card">
+            <div class="mermaid">flowchart TB
+              Q([ต้องการมือ code?]) --&gt; A{ลักษณะงาน}
+              A -- task บน repo, 1 issue --&gt; B[maw workon repo slug\nL2 Claude pane]
+              A -- A/B compare engines --&gt; C[maw swarm claude omx\nshared-cwd เท่านั้น]
+              A -- high-freq repo เดิม --&gt; D[maw wake repo --wt slot\nwarm worktree OPT-IN]
+              B --&gt; E{SOLO หรือ TEAM?}
+              E -- SOLO 1-2 files --&gt; F[L2 code โดยตรง\nbranch -&gt; PR -&gt; DONE-ping]
+              E -- TEAM ซับซ้อน --&gt; G[maw team create slug\nmaw team spawn role --wt --engine omx --exec]
+              G --&gt; H[workers code ใน isolated worktrees]
+              H --&gt; I[aggregate -&gt; maw pr\nmaw team shutdown\nDONE-ping L1]
+              F --&gt; I
+              I --&gt; J[L1: scrutinize -&gt; merge\nmaw done window]</div>
+            <figcaption><strong>ภาพที่ 7.1: Decision Tree — ต้องการมือ code ใช้ maw คำสั่งไหน</strong><span>workon คือ DEFAULT สำหรับทุก task; swarm ใช้สำหรับ A/B เท่านั้น</span></figcaption>
+          </figure>
+
+          <h2 id="section-8">สรุปบทที่ 07</h2>
+
+          <p>
+            maw-js คือ interface เดียวที่ Gale Workflow อนุญาตให้ใช้สำหรับจัดการ tmux และ agents
+            การบล็อก raw tmux ไม่ใช่ข้อจำกัด แต่เป็นการบังคับให้ใช้ path ที่มี audit trail, hook enforcement,
+            และ oracle identity injection ครบถ้วน
+          </p>
+          <p>
+            คำสั่งที่สำคัญที่สุดคือ <code>maw workon</code> (spawn L2), <code>maw team spawn</code> (spawn L3),
+            <code>maw hey</code> (สื่อสาร), <code>maw capture</code> (verify), <code>maw done</code> (cleanup)
+            และ <code>maw team shutdown</code> (tear down workers)
+            จำกฎง่าย ๆ: L2 ไม่ merge, L2 ไม่ <code>maw done</code> ตัวเอง — ทั้งสองอย่างเป็นหน้าที่ L1
+          </p>
+          <p>
+            gotcha ที่พบบ่อยที่สุดคือ engine map key หายทำให้ fallback เงียบ ๆ — ตรวจด้วย <code>maw panes</code>
+            และ <code>jq '.commands'</code> ก่อน spawn team ทุกครั้ง บทถัดไปจะอธิบาย Delegation Tiers
+            ซึ่งกำหนดว่าใครส่งงานให้ใคร และเมื่อไหร่ควร dispatch vs inline
+          </p>
+
+        </section>
+        <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
+          <a class="button secondary" href="ch06.html">← Skills System</a>
+          <a class="button primary" href="ch08.html">Delegation Tiers →</a>
+        </nav>
+      </article>
+    </main>
+  </div>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        primaryColor: "#eef2ff",
+        primaryTextColor: "#0f172a",
+        primaryBorderColor: "#4f46e5",
+        lineColor: "#64748b",
+        secondaryColor: "#f1f5f9",
+        tertiaryColor: "#ffffff",
+        fontFamily: "IBM Plex Sans Thai, Noto Sans Thai, sans-serif"
+      }
+    });
+  </script>
+</body>
+</html>
