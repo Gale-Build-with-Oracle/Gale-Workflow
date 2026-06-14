@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html" class="active" aria-current="page"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -78,7 +79,7 @@
   participant GH as GitHub PR
 
   H->>L1: ส่งงาน / CR / BUG
-  L1->>L1: gh issue create #N
+  L1->>L1: gh issue create No.N
   L1->>L2: maw workon project slug
   L2->>L2: ตัดสิน SOLO/TEAM
   L2->>W1: maw team spawn worker-A --wt --exec
@@ -88,7 +89,7 @@
   W1->>L2: DONE ping
   W2->>L2: DONE ping
   L2->>L2: aggregate + lint/build/test
-  L2->>GH: maw pr (Closes #N)
+  L2->>GH: maw pr (Closes No.N)
   L2->>L1: DONE ping: PR ready
   L1->>GH: /scrutinize + merge
   L1->>L1: maw done window
@@ -205,14 +206,48 @@ maw capture sprint-42-worker-2</code></pre>
           <p>Engine ที่ระบุในตารางข้างต้นไม่ใช่ข้อแนะนำ แต่เป็น <strong>กฎที่ enforce</strong>: L1 และ L2 ต้องเป็น Claude เสมอ (ไม่มี <code>--engine omx</code> ที่ L1/L2), L3 ต้องเป็น OMX/Codex (Claude ไม่ควรเป็น coding hand เพราะ context จะ bleed กลับ L2)</p>
           <p>เหตุผลที่ L2 ต้องเป็น Claude: Claude Code hook bind หนักกว่า, มี monitor loop ที่ทำงานได้, และ <code>/scrutinize</code> ใน Claude มี fidelity สูงกว่า Codex ที่ turn-loop blind ระหว่าง ping</p>
 
-          <h2 id="section-8">สรุปบทที่ 02</h2>
+          <h2 id="section-8">2.8 ทำไมต้อง 3 Layers และทำไม Engine Split แบบนี้</h2>
+          <p>จำนวน layer ไม่ใช่รสนิยม แต่เป็นผลจาก ownership boundary ที่ต้องแยกกันให้ชัด 2 layers น้อยเกินไปเพราะชั้นที่รับงานจากมนุษย์ต้องแบกทั้ง planning, coding context, review และ merge authority พร้อมกัน จุดนี้ทำให้ self-review กลับมาอีกครั้ง ส่วน 4 layers มากเกินไปเพราะเพิ่ม handoff ที่ไม่มี authority ใหม่จริง ทำให้ coordination cost สูงขึ้นโดยไม่ได้ลด risk เท่าที่ควร</p>
+          <p>3 layers จึงเป็นจุดสมดุล: L1 ถือภาพรวมและ merge authority, L2 ถือ decomposition กับ aggregation, L3 ถือ implementation slice เท่านั้น รายละเอียดการลองผิดลองถูกและ comparison เต็มของ 5 design flip อยู่ใน <a href="ch02b.html">บทที่ 02b</a> บทนี้ต้องการให้จำแกนเดียวก่อน: layer ถูกนับตาม authority boundary ไม่ใช่ตามจำนวน agent ที่เปิดอยู่</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>แบบที่พิจารณา</th>
+                <th>ปัญหาหลัก</th>
+                <th>เหตุผลที่ 3 layers ชนะ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>2 layers</td>
+                <td>controller กับ implementer ยังปนกันเกินไป</td>
+                <td>แยก L2 orchestration ออกจาก L1 merge authority</td>
+              </tr>
+              <tr>
+                <td>3 layers</td>
+                <td>มี handoff เท่าที่จำเป็น</td>
+                <td>L1 review, L2 aggregate, L3 code โดยไม่ข้ามสิทธิ์</td>
+              </tr>
+              <tr>
+                <td>4 layers</td>
+                <td>เพิ่ม coordinator ที่ไม่มี authority ใหม่</td>
+                <td>ตัดชั้นที่ซ้ำซ้อนออกเพื่อให้ accountability สั้น</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>Engine split ก็เป็น structural decision เช่นกัน L1 และ L2 ต้องเป็น Claude เพราะ harness ของ Claude ถูก bind กับ hook และ guard หนักกว่า: raw tmux ถูกบล็อก, verify gate ทำงานในจังหวะที่ถูกต้อง, monitor loop ทำงานต่อเนื่อง, และ <code>/scrutinize</code> trace actual path ได้ครบกว่า ในทางกลับกัน OMX หรือ Codex เหมาะกับ L3 เพราะ worker มี brief แคบ, worktree แยก, และ stop condition ชัดเจน</p>
+          <p>Codex turn-loop มีข้อจำกัดสำคัญคือมัน blind ระหว่าง ping: ถ้า worker หายหรือ pane ค้าง มันไม่ควรเป็นชั้นที่ monitor fleet หรือ adjudicate merge ได้เอง ดังนั้นการให้ Claude เป็น L1/L2 และ OMX เป็น L3 ไม่ใช่การบอกว่า engine ไหน "เก่งกว่า" แต่เป็นการวาง engine ให้ตรงกับ enforcement surface ที่แต่ละชั้นต้องใช้</p>
+
+          <h2 id="section-9">สรุปบทที่ 02</h2>
           <p>สถาปัตยกรรม 3 ชั้นของ Gale Workflow ไม่ได้ซับซ้อนเพื่อความซับซ้อน แต่ออกแบบมาให้แต่ละชั้นมีสิทธิ์เท่าที่ข้อมูลที่มีอยู่รองรับ L3 worker มี context น้อยที่สุดจึงมีสิทธิ์น้อยที่สุด L1 Oracle มีภาพรวมสมบูรณ์ที่สุดจึงเป็นจุดเดียวที่ merge authority รวมอยู่</p>
           <p>Project-scope injection ผ่าน <code>maw workon</code> แก้ปัญหา context bleed ที่เกิดจาก warm pool ได้อย่างเป็นระบบ แต่ละ task เริ่มต้นด้วย context ที่สะอาดและตรงกับ project ที่ทำงานอยู่จริง</p>
           <p>Merge Gate ที่ L1 เป็น implementation ของ P3 (External Brain, Not Command) และ P2 (Patterns Over Intentions) — แทนที่จะหวังว่า AI จะ self-review ได้ ระบบบังคับให้มีชั้นที่แยกออกจากกันอย่างชัดเจนระหว่างผู้เขียน code และผู้ review code</p>
         </section>
         <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
           <a class="button secondary" href="ch01.html">← 5 Principles</a>
-          <a class="button primary" href="ch03.html">ψ Vault →</a>
+          <a class="button primary" href="ch02b.html">ความเจ็บปวด →</a>
         </nav>
       </article>
     </main>
