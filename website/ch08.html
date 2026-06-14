@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -225,7 +226,41 @@ maw capture sprint-42-worker-1</code></pre>
 
           <p>ข้อสังเกตอีกประการ: ภายใน L2 worktree, L2 เองก็ใช้ subagents (Arrows) สำหรับ research ภายใน — เช่น อ่านไฟล์ก่อน plan, วิเคราะห์ dependency — แต่ L2 ต้องไม่เขียน feature code ด้วยตัวเองถ้า routing เป็น TEAM; ให้ delegate ให้ OMX workers ทำ feature coding แทน</p>
 
-          <h2 id="section-7">8.7 สรุปบทที่ 08</h2>
+          <h2 id="section-7">8.7 ทำไมต้องมี 3 tiers ไม่ใช่แค่ 2</h2>
+
+          <p>
+            การ delegation มีแกนแลกเปลี่ยนสองอย่าง: <strong>coordination</strong> กับ <strong>isolation</strong>
+            ถ้ามีแค่ "ทำเอง" กับ "ส่งไปอีก session" ระบบจะขาดพื้นที่กลางสำหรับงานอ่าน, review, และวางแผนที่ต้องขนานแต่ยังไม่ควรแตะไฟล์จริง
+            จึงต้องมี 3 tiers เพื่อเลือกแรงที่พอดีกับความเสี่ยงของงาน
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Tier</th>
+                <th>Isolation</th>
+                <th>Coordination</th>
+                <th>ใช้เมื่อ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Arrows</td><td>ต่ำ — แชร์ context กับ leader</td><td>เบาและเร็ว</td><td>research, review, อ่านไฟล์หลายจุด, ไม่ feature coding</td></tr>
+              <tr><td>Squads</td><td>กลาง — ยังอยู่ใน session เดียว</td><td>มี task list และ messaging</td><td>งานวิเคราะห์หลาย lane ที่ต้อง sync บ่อย</td></tr>
+              <tr><td>Federation</td><td>สูง — แยก session และ worktree</td><td>แพงกว่าแต่ปลอดภัยกว่า</td><td>งาน code จริง, PR จริง, context ที่ห้าม bleed</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            Arrows เป็น shared-context enhancement: ให้ subagent ช่วยอ่านหรือทบทวนโดยไม่สร้างโลกใหม่ เหมาะกับการเพิ่มสายตา ไม่เหมาะกับ feature coding
+            Squads เพิ่มโครงสร้างขึ้นมาอีกขั้น มี task list และช่องทางสื่อสาร แต่ยังไม่ใช่ isolation เต็มรูปแบบ
+            Federation คือการแยกจริง: session ใหม่, worktree ใหม่, branch ใหม่ และ cleanup หลัง merge
+          </p>
+          <p>
+            เหตุผลที่ workflow ย้ำ "subagents enhance, workers isolate" คือการแตะ codebase ต้องการขอบเขต ownership ที่ git ตรวจได้
+            ถ้าใช้ Arrow แก้ feature โค้ด จะไม่มี boundary ชัดว่า diff มาจากใคร แต่ถ้าใช้ Federation L2 รวมงานจาก worker branches ได้โดยมีร่องรอยครบ
+          </p>
+
+          <h2 id="section-8">8.8 สรุปบทที่ 08</h2>
           <p>Delegation Tiers คือหัวใจของการออกแบบ Gale Workflow สามระดับ (Arrows, Squads, Federation) ให้ความยืดหยุ่นในการเลือกระดับ isolation ตามความต้องการของงาน การเลือกถูกระดับช่วยประหยัด token, ป้องกัน context bleed และทำให้ทีม agent ทำงานได้อย่างน่าเชื่อถือ</p>
           <p>กฎที่ต้องจำให้ขึ้นใจ: ใช้ Arrows สำหรับ research/review ภายใน session; ใช้ Squads สำหรับ parallel in-session coordination; ใช้ Federation เสมอสำหรับงานที่แตะ codebase จริง หลักการ "subagents enhance, workers isolate" เป็นเส้นแบ่งที่ชัดเจนระหว่างสองโลก</p>
           <p>บทถัดไปจะเจาะลึก routing decision ระหว่าง SOLO และ TEAM ซึ่งเป็นคำถามสำคัญที่ L2 orchestrator ต้องตอบก่อนเริ่มงานทุกครั้ง พร้อม strategy.json gate ที่ machine บังคับใช้โดยอัตโนมัติ</p>

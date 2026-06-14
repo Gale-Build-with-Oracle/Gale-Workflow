@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -304,7 +305,40 @@ EOF
             </tbody>
           </table>
 
-          <h2 id="section-8">สรุปบทที่ 06</h2>
+          <h2 id="section-8">6.8 Routing ไม่ใช่กล่องดำ: description คือสัญญาณ</h2>
+
+          <p>
+            Skill routing ใน Gale Workflow ไม่ได้มี embedding router แยกต่างหากที่ตัดสินใจลับ ๆ ก่อนถึง agent
+            สิ่งที่เกิดขึ้นคือรายการ skill ที่ available พร้อม <code>description</code> ถูกฉีดเข้า context แล้ว agent อ่าน intent ของผู้ใช้เทียบกับคำอธิบายนั้นโดยตรง
+            ดังนั้น <code>description</code> จึงเป็น routing signal หลัก ไม่ใช่แค่เอกสารประกอบ
+          </p>
+          <p>
+            ผลที่ตามมาคือ skill ที่ดีต้องเขียน description ให้เหมือน contract: บอกว่าใช้เมื่อไหร่, ไม่ใช้เมื่อไหร่, และผลลัพธ์ที่ skill รับผิดชอบคืออะไร
+            ถ้า description คลุมเครือ agent จะต้องเดา และการเดาคือที่มาของ false positive เช่นโหลด skill deploy ทั้งที่ผู้ใช้แค่ถามเรื่อง local setup
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>User intent</th>
+                <th>Skill ที่ควรชนะ</th>
+                <th>เหตุผล</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>"แก้ UI table ให้ responsive"</td><td><code>sop-frontend</code></td><td>เจาะจง frontend และ accessibility มากกว่า skill ทั่วไป</td></tr>
+              <tr><td>"sync docs ก่อน UAT"</td><td><code>doc-sync</code></td><td>มี trigger ชัดว่า update SRS/UAT/CR เป็น batch</td></tr>
+              <tr><td>"หา repo ที่เคยทำ feature นี้"</td><td><code>trace</code></td><td>เป็นการ locate project/code ไม่ใช่เรียน codebase ทั้งก้อน</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            เมื่อ trigger overlap กัน กฎปฏิบัติคือ description ที่ specific กว่าชนะ และ <code>do_not_trigger</code> ใช้ตัด ambiguity
+            ตัวอย่างเช่น skill ด้าน deployment อาจมีคำว่า "restart service" แต่ถ้า prompt คือ "ตั้งค่า local development service" รายการ do-not-trigger
+            ควรกันไม่ให้ skill deploy โหลดผิดบริบท
+          </p>
+
+          <h2 id="section-9">สรุปบทที่ 06</h2>
 
           <p>
             Skills System คือกลไกที่ทำให้ workflow รู้สึกเหมือน "ระบบที่มีความสามารถเพิ่มขึ้นตามเวลา"

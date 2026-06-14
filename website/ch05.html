@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html" class="active" aria-current="page"><span>CH 05</span>Oracle Brain</a>
@@ -269,7 +270,43 @@ curl -s -X POST http://localhost:47778/api/search \
             </tbody>
           </table>
 
-          <h2 id="section-8">สรุปบทที่ 05</h2>
+          <h2 id="section-8">5.8 ทำไมเลือก bge-m3, RRF และ fallback ที่ไม่ล้มทั้งระบบ</h2>
+
+          <p>
+            เหตุผลที่ Oracle Brain เลือก <strong>bge-m3</strong> ไม่ใช่เพราะเป็น model ที่ใหญ่ที่สุด แต่เพราะโจทย์จริงของ fleet
+            คือการค้นข้ามภาษาไทยและอังกฤษในเอกสารชุดเดียวกัน bge-m3 ให้ embedding ขนาด 1024 มิติซึ่งสมดุลระหว่างคุณภาพกับต้นทุน
+            ดีพอสำหรับ multilingual recall โดยไม่ทำให้ reindex หนักเกินไป
+          </p>
+          <p>
+            ทางเลือกที่เบากว่าอย่าง nomic 768-dim เหมาะกับงานเร็วและเอกสารภาษาอังกฤษเป็นหลัก ส่วน qwen3 4096-dim ให้พื้นที่แทนความหมายมากกว่า
+            แต่แลกด้วย latency, storage, และค่า reindex ที่สูงกว่า สำหรับ workflow ที่ต้อง search ก่อนทุกคำตอบ ค่าใช้จ่ายต่อ query สำคัญพอ ๆ กับคุณภาพ
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ตัวเลือก</th>
+                <th>ข้อดี</th>
+                <th>เหตุผลที่ไม่เป็น default</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>bge-m3 1024-dim</td><td>รองรับไทย↔อังกฤษ, recall ดี, ต้นทุนกลาง</td><td>เป็นจุดสมดุลสำหรับ knowledge base หลายภาษา</td></tr>
+              <tr><td>nomic 768-dim</td><td>เร็วและเบา</td><td>เหมาะกับ fast lane แต่ cross-lingual recall อ่อนกว่า</td></tr>
+              <tr><td>qwen3 4096-dim</td><td>พื้นที่ semantic ใหญ่กว่า</td><td>storage และ reindex cost สูงเกิน default</td></tr>
+            </tbody>
+          </table>
+
+          <p>
+            RRF ถูกเลือกเพราะมัน merge ผลลัพธ์จาก FTS5 และ vector ด้วยลำดับอันดับ ไม่ใช่คะแนนดิบ คะแนนของ keyword search กับ vector similarity
+            อยู่คนละ scale กัน การเอาคะแนนมาบวกตรง ๆ จะ bias ไปทางระบบใดระบบหนึ่ง แต่ RRF robust กว่าและไม่ต้อง train model เพิ่ม
+          </p>
+          <blockquote>
+            <strong>Fallback UX:</strong> เมื่อ ChromaDB หรือ vector layer offline ผู้ใช้ยังได้ผลลัพธ์จาก FTS-only พร้อม warning ชัดเจน
+            ระบบ degrade คุณภาพของ semantic recall แต่ไม่ทำให้ agent หยุดทำงาน เพราะ memory ที่อ่านได้บางส่วนยังดีกว่า memory ที่ล้มทั้งก้อน
+          </blockquote>
+
+          <h2 id="section-9">สรุปบทที่ 05</h2>
 
           <p>
             arra-oracle-v3 เป็นชั้น memory ถาวรที่ทำให้ Gale Workflow ฉลาดขึ้นตามเวลา แม้ agent จะเป็น ephemeral
