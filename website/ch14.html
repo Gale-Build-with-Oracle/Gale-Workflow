@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -296,7 +297,12 @@ Done condition: CI pass, ไม่มี lint error"
             ไม่ใช่ oracle ที่เพิ่งรับ task มาแล้ว delegate ต่อโดยไม่มี context
           </p>
 
-          <h2 id="section-8">สรุปบทที่ 14</h2>
+          <h2 id="section-8">14.8 เมื่อไรเพิ่ม oracle และใครรับผิดชอบ merge</h2>
+          <p>จำนวน oracle ไม่ได้วัดจากจำนวนคนหรือจำนวน repo แต่วัดจาก domain boundary ถ้างานชุดหนึ่งมี vocabulary, risk model, release cadence และ ownership ที่ต่างจากงานเดิมจน L1 เดิม review ได้ไม่ลึกพอ ควรเพิ่ม oracle ใหม่ ถ้าแค่มีหลาย repo แต่ใช้ contract, stack และ stakeholder เดียวกัน การ split domain อาจพอและลด overhead ได้มากกว่า</p>
+          <p>กฎ accountability คือ owner adjudicates: oracle เจ้าของ domain เป็นคนรับผิดชอบ merge ใน domain ของตัวเองเสมอ แม้งานจะถูก delegate เข้ามาจาก oracle อื่น ผู้ delegate ทำหน้าที่ส่ง issue, context และ expected outcome ให้ครบ แต่ L1 ของ owner ต้อง scrutinize และตัดสินใจ merge เพราะ owner เข้าใจ blast radius และ production contract ของ domain นั้นดีที่สุด</p>
+          <p>กฎนี้ทำให้ cross-oracle delegation ไม่กลายเป็นการโยนความเสี่ยงข้ามทีม เส้นทางที่ถูกต้องคือ handoff ผ่านข้อความที่ trace ได้ → owner route งานตาม SOLO/TEAM → owner review → owner merge ถ้ามีปัญหาหลัง merge accountability จึงย้อนกลับไปยัง domain owner ได้ชัดเจน</p>
+
+          <h2 id="section-9">14.9 สรุปบทที่ 14</h2>
           <p>
             Fleet ใน Gale Workflow คือกลุ่ม oracle ที่แบ่ง domain ชัดเจน ทำงานด้วย shared doctrine
             แต่แต่ละตัวมี identity และ ownership เป็นของตัวเอง

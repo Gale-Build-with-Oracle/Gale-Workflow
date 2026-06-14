@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -363,7 +364,16 @@ maw team spawn sprint-x worker-1 --wt --engine omx --exec \
             <code>git log --oneline -5</code> ใน worktree ช่วยบอก context ที่ worker ทำมาแล้ว
           </p>
 
-          <h2 id="section-8">สรุปบทที่ 15</h2>
+          <h2 id="section-8">15.8 Triage เมื่อ failure ซ้อนกันและการกู้ ψ vault</h2>
+          <p>เมื่อ failure หลายชั้นเกิดพร้อมกัน อย่าแก้จากอาการที่ดังที่สุด ให้เรียงตามสิ่งที่สร้าง failure เพิ่มก่อน เพราะถ้าแหล่งกำเนิดยังทำงานอยู่ การแก้ pane หรือ hook จะถูกกลบด้วยอาการใหม่ทันที</p>
+          <ol>
+            <li><strong>Daemon retry-loop ก่อน:</strong> ถ้ามี failed respawn job หรือ background daemon ที่เปิด pane ซ้ำ ให้หยุด loop ก่อน เพราะมันสร้าง failure เพิ่มทุก cycle</li>
+            <li><strong>Panes ถัดมา:</strong> หลัง loop หยุดแล้วค่อยจัดการ zombie, wrong-engine หรือ pane ที่ cwd หาย เพื่อให้ roster สะอาดและอ่านสถานะได้จริง</li>
+            <li><strong>Hooks สุดท้าย:</strong> เมื่อ runtime นิ่งแล้วค่อย debug hook failure เช่น pre-guard หรือ prompt-inject เพราะตอนนั้น output จะไม่ปนกับ noise จาก pane/daemon</li>
+          </ol>
+          <p>สำหรับ ψ vault ให้ถือ markdown files เป็น source of truth ส่วน SQLite หรือ vector index เป็น cache สำหรับค้นหา ถ้า index corrupt หรือ search เพี้ยน ให้ reindex จากไฟล์ markdown แทนการแก้ข้อมูลใน DB โดยตรง วิธีนี้รักษาหลัก Nothing is Deleted: ความทรงจำจริงยังอยู่ในไฟล์ที่ audit ได้ และ index สร้างใหม่ได้เสมอ</p>
+
+          <h2 id="section-9">15.9 สรุปบทที่ 15</h2>
           <p>
             Troubleshooting ใน Gale Workflow มีโครงสร้างที่ชัดเจน — ระบุ layer ก่อน แล้วใช้เครื่องมือที่เหมาะกับ layer นั้น
             debug mantra (reproduce → trace → falsify → cross-reference) ป้องกันการ fix ผิด hypothesis

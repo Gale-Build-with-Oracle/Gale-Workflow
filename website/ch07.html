@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -317,7 +318,42 @@ maw team spawn sprint-x worker-1 \
             <figcaption><strong>ภาพที่ 7.1: Decision Tree — ต้องการมือ code ใช้ maw คำสั่งไหน</strong><span>workon คือ DEFAULT สำหรับทุก task; swarm ใช้สำหรับ A/B เท่านั้น</span></figcaption>
           </figure>
 
-          <h2 id="section-8">สรุปบทที่ 07</h2>
+          <h2 id="section-8">7.8 ถ้า bypass maw จะพังตรงไหน</h2>
+
+          <p>
+            maw ไม่ได้เป็นเพียง wrapper รอบ tmux แต่เป็น boundary ที่บันทึกว่าใครส่งคำสั่งอะไร, ส่งเข้า pane ไหน, และงานนั้นอยู่ใน session หรือ worktree ใด
+            เมื่อ bypass ด้วย raw tmux คุณจะเสีย audit trail, เสีย identity injection, และเสี่ยงส่งข้อความเข้า pane ผิดโดยไม่มี inbox record ให้ตรวจย้อน
+          </p>
+          <p>
+            ตัวอย่างที่ชัดที่สุดคือ <code>maw swarm</code> ซึ่งตั้งใจให้เป็น shared-cwd สำหรับ A/B engine comparison เท่านั้น
+            มันจึง reject <code>--wt</code> โดยออกแบบไว้ ไม่ใช่เพราะ maw ทำไม่ได้ แต่เพราะ parallel commits ใน cwd เดียวกันจะ clobber กัน:
+            engine A แก้ไฟล์เดียวกับ engine B, index ของ git เห็น diff ทับกัน, และ L1 ต้องมานั่งแยกมือว่า change ไหนเป็นของใคร
+          </p>
+
+          <blockquote>
+            <strong>หลักจำ:</strong> swarm = เปรียบเทียบความคิดในพื้นที่เดียวกัน; workon/team spawn = ลงมือเขียนโค้ดในพื้นที่แยก
+            ถ้างานจะ commit ต้องอยู่ใน worktree ที่ isolate เสมอ
+          </blockquote>
+
+          <table>
+            <thead>
+              <tr>
+                <th>คำสั่งส่งข้อความ</th>
+                <th>สิ่งที่ทำ</th>
+                <th>เหมาะเมื่อ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code>maw hey</code></td><td>เขียน signed envelope ระบุผู้ส่ง + ส่ง Enter + มีร่องรอย inbox</td><td>brief, DONE, STUCK, handoff ที่ต้อง audit</td></tr>
+              <tr><td><code>maw send-text</code></td><td>พิมพ์ข้อความ + Enter แบบ blind ไม่มี envelope</td><td>นัดจิ้ม composer สั้น ๆ เมื่อไม่ต้องการ audit record</td></tr>
+            </tbody>
+          </table>
+          <p>
+            คำว่า "signed" ในที่นี้ไม่ได้หมายถึง cryptographic signature แต่หมายถึงข้อความมี identity ของผู้ส่งและ delivery path ที่ตรวจได้
+            นี่คือเหตุผลที่ workflow กำหนดให้ communication ปกติใช้ <code>maw hey</code>: L2 และ L1 เห็นได้ว่าใครรายงาน DONE จริง ไม่ใช่ข้อความลอย ๆ ใน pane
+          </p>
+
+          <h2 id="section-9">สรุปบทที่ 07</h2>
 
           <p>
             maw-js คือ interface เดียวที่ Gale Workflow อนุญาตให้ใช้สำหรับจัดการ tmux และ agents

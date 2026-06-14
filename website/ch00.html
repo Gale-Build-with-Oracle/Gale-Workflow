@@ -19,6 +19,7 @@
         <a href="ch00.html" class="active" aria-current="page"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -156,7 +157,51 @@ maw team spawn sprint worker-1 --wt --engine omx --exec \
             </tbody>
           </table>
 
-          <h2 id="section-7">สรุปบทที่ 00</h2>
+          <h2 id="section-7">0.7 ทำไมไม่เลือกทางอื่น</h2>
+          <p>ก่อนจะมาถึงสถาปัตยกรรม 3 ชั้นแบบ ephemeral มีทางเลือกที่ดูง่ายกว่าอยู่หลายแบบ: agent ตัวเดียวทำทุกอย่าง, in-session subagents ที่ช่วยอ่านและ review, standing หรือ warm pools ที่เปิดค้างไว้, และระบบ 2 ชั้นแบบ on-demand ที่ให้ผู้สั่งงานคุยกับ worker โดยตรง ทางเลือกเหล่านี้น่าดึงดูดเพราะลดจำนวน pane ลดพิธีการ และดูเหมือนเริ่มงานได้เร็วกว่า</p>
+          <p>แต่เมื่อใช้กับงานหลาย project ปัญหาที่เกิดจริงไม่ใช่แค่ "ทำงานช้า" แต่คือ context bleed, ownership ไม่ชัด, และ review authority ปนกับ implementation มากเกินไป Gale Workflow จึงเลือก 3 ชั้นเพื่อแยกผู้ถือภาพรวม ผู้แตกงาน และผู้ลงมือทำออกจากกัน ส่วนการเปรียบเทียบเต็มว่าทำไม 3 ชั้นชนะ monolithic, subagents, standing pools และ 2-layer on-demand อยู่ใน <a href="ch02b.html">บทที่ 02b</a></p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ทางเลือก</th>
+                <th>สิ่งที่ดูดี</th>
+                <th>เหตุผลที่ยังไม่พอ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Monolithic agent</td>
+                <td>เริ่มง่าย มี context เดียว</td>
+                <td>context บวมเร็ว และ self-review กลายเป็นจุดอ่อน</td>
+              </tr>
+              <tr>
+                <td>In-session subagents</td>
+                <td>ช่วยอ่านและคิดพร้อมกันได้</td>
+                <td>ยังแชร์ context กับ leader จึงไม่ใช่ isolation จริง</td>
+              </tr>
+              <tr>
+                <td>Standing หรือ warm pools</td>
+                <td>ดูเหมือนประหยัดเวลา spawn</td>
+                <td>session เก่าพา project context ผิดติดมาด้วย</td>
+              </tr>
+              <tr>
+                <td>2-layer on-demand</td>
+                <td>โครงสร้างน้อยกว่า</td>
+                <td>ช่องว่างระหว่าง review กับ coding ยังไม่ชัดพอ</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-8">0.8 เครดิตและความถ่อมตน (Credit &amp; Humility)</h2>
+          <p>Gale Workflow ไม่ได้เกิดขึ้นจากสุญญากาศ รากฐานสำคัญมาจากงานของ <strong>อาจารย์ Nat Weerawan (@nazt)</strong> ที่วางระบบและเครื่องมือไว้แข็งแรงพอให้คนอื่นนำไปเรียนรู้ ทดลอง และต่อยอดได้อย่างอิสระ เครื่องมือใน upstream ของ Soul-Brews-Studio เช่น <code>maw-js</code>, <code>arra-oracle-v3</code>, <code>arra-oracle-skills-cli</code>, และ <code>maw-plugin-registry</code> คือฐานที่ทำให้ workflow แบบนี้ไม่ต้องเริ่มจากศูนย์</p>
+          <p>นอกจากเครื่องมือแล้ว หนังสือ <a href="https://nazt.github.io/agents-in-parallel">agents-in-parallel</a> และห้องเรียน <strong>oracle-worlds</strong> ยังให้ภาษาร่วมในการคิดเรื่อง multi-agent, orchestration, mailbox, และการให้ agent ทำงานคู่กับมนุษย์อย่างมีวินัย รากฐานที่แข็งแรงของอาจารย์ Nat คือสิ่งที่ทำให้เราสามารถ DIY workflow ของเราเองได้อย่างอิสระ โดยยังรู้ว่าเรายืนอยู่บนงานของใคร</p>
+
+          <blockquote>
+            <strong>กรอบความถ่อมตน:</strong> สถาปัตยกรรม 3-layer ephemeral ในหนังสือเล่มนี้เป็นเพียง <strong>ส่วนหนึ่งของ Gale Fleet</strong> เท่านั้น ไม่ใช่ best practice สากล ไม่ใช่คำตอบสุดท้าย และไม่ใช่กฎตายตัวสำหรับทุกทีม ยังมีหนทางอีกมากมายที่อาจดีกว่า เบากว่า หรือมีประสิทธิภาพกว่า เราเพียงเลือกสิ่งที่เหมาะกับ fleet ของเรา ณ เวลานี้ ผู้อ่านควรมองเนื้อหานี้เป็นแรงบันดาลใจและกรณีศึกษา (inspiration / case study) แล้วนำ principle ไปปรับให้เหมาะกับบริบทของตัวเอง
+          </blockquote>
+
+          <h2 id="section-9">สรุปบทที่ 00</h2>
           <p>ปัญหาหลักที่ Gale Workflow เกิดมาเพื่อแก้ไขคือ session amnesia — สภาวะที่ AI agent เริ่มต้นใหม่ทุก session โดยไม่มีความรู้จากอดีต ทำให้ผิดซ้ำและเสียเวลาป้อน context ซ้ำ ระบบ external brain ผ่าน ψ Vault และการ search ก่อนตอบทุกครั้งเป็นแกนหลักของการแก้ปัญหานี้</p>
           <p>สถาปัตยกรรม 3 ชั้นแบบ ephemeral ช่วยให้งานขนาดใหญ่แบ่งออกได้โดยที่ context ไม่บวม แต่ละ task ได้ worktree ของตัวเอง โหลด project context ที่ถูกต้อง และถูกทำลายเมื่อเสร็จ ไม่มีสิ่งค้างอยู่</p>
           <p>ตลอดหนังสือ 16 บทนี้ คุณจะได้เรียนรู้ทั้งหลักการ การติดตั้ง การใช้งานประจำวัน และการแก้ปัญหาระดับ production โดยเนื้อหาทั้งหมดเป็นภาษาไทยพร้อม English technical term ที่ใช้จริงในระบบ</p>
