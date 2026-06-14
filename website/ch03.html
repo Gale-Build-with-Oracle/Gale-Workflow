@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html" class="active" aria-current="page"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -226,13 +227,52 @@ session-ended: 2026-06-14T22:00:00
 # - [[worktree-spawn-race-condition]] — 2026-06-13
 # - [[maw-team-status-unreliable-omx]] — 2026-06-14</code></pre>
 
-          <h2 id="section-8">สรุปบทที่ 03</h2>
+          <h2 id="section-8">3.8 ทำไมต้อง Hybrid: Files + SQLite Index</h2>
+          <p>ψ Vault ไม่ได้เลือก "ไฟล์เท่านั้น" หรือ "database เท่านั้น" เพราะทั้งสองอย่างแก้ปัญหาคนละด้าน ไฟล์คือ source of truth: อ่านได้ด้วยตาเปล่า, review ผ่าน git ได้, append-only ได้, และรอดแม้ service search จะล่ม ส่วน SQLite, FTS และ vector index คือ recall layer ที่ทำให้ค้นหาความรู้หลายพันไฟล์ได้เร็วพอสำหรับ workflow ประจำวัน</p>
+          <p>tradeoff นี้สำคัญเพราะ Oracle ต้อง search ก่อน action ทุกครั้ง ถ้าต้องไล่อ่านไฟล์ทั้งหมดด้วยตัวเองทุกครั้ง workflow จะช้าเกินไป แต่ถ้าเชื่อ index เป็น truth เพียงอย่างเดียว ระบบจะกลายเป็น black box ทันทีเมื่อผลค้นหาผิด Gale Workflow จึงให้ index ทำหน้าที่พาไปหาไฟล์ แล้วให้ไฟล์เป็นหลักฐานสุดท้ายที่มนุษย์และ agent audit ได้</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ชั้นข้อมูล</th>
+                <th>หน้าที่</th>
+                <th>Failure mode</th>
+                <th>Mitigation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Markdown files ใน ψ</td>
+                <td>source of truth และประวัติ append-only</td>
+                <td>ค้นช้าเมื่อความรู้โตมาก</td>
+                <td>สร้าง index จากไฟล์ซ้ำได้เสมอ</td>
+              </tr>
+              <tr>
+                <td>SQLite และ FTS</td>
+                <td>keyword recall ที่ deterministic</td>
+                <td>ผลลัพธ์ตรงคำแต่ไม่ตรง intent</td>
+                <td>อ่านไฟล์จริงก่อนใช้เป็นหลักฐาน</td>
+              </tr>
+              <tr>
+                <td>Vector index</td>
+                <td>semantic recall ข้ามคำและข้ามภาษา</td>
+                <td>ดึง learning ที่ดูคล้ายแต่ไม่เกี่ยว</td>
+                <td>audit source file แล้ว supersede learning ที่ผิด</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <blockquote>
+            <strong>Failure mode ที่ต้องรู้:</strong> ถ้า <code>oracle_search</code> คืนผลลัพธ์ที่ irrelevant agent อาจเดินตาม learning ผิดได้ mitigation ไม่ใช่การเลิก search แต่คือการอ่านไฟล์ที่อ้างอิง ตรวจว่า context ตรงงานจริง และถ้า learning เก่าผิดให้เขียน learning ใหม่ supersede มัน ประวัติยังอยู่ แต่ป้ายบอกทางถูกแก้ให้คนถัดไปเห็น
+          </blockquote>
+
+          <h2 id="section-9">สรุปบทที่ 03</h2>
           <p>ψ Vault คือสิ่งที่ทำให้ Gale Workflow แตกต่างจากการใช้ AI coding agent แบบธรรมดา มันเป็น external brain ที่ความรู้สะสมได้ข้าม session สะสมได้ข้าม oracle และสะสมได้ข้าม project ทั้งหมดในรูปแบบที่อ่านได้ ย้ายได้ และ debug ได้</p>
           <p>โครงสร้างไฟล์ที่ชัดเจน (inbox, learnings, retrospectives, traces, active, archive) ทำให้ทั้งมนุษย์และ Oracle รู้ว่าข้อมูลแต่ละประเภทอยู่ที่ไหน Learning Lifecycle ที่วนซ้ำ (สังเกต → เขียน → search → ใช้) เป็น mechanism ที่ทำให้ Oracle ฉลาดขึ้นเรื่อยๆ โดยไม่ต้อง retrain โมเดล</p>
           <p>กฎ MANDATORY FIRST STEP ที่ว่า "search ก่อนตอบทุกครั้ง" ไม่ใช่แค่ best practice แต่เป็น implementation ของ P2 (Patterns Over Intentions) — ดูสิ่งที่รู้จริงจาก ψ ก่อนเชื่อว่าจำได้จาก training data บทถัดไป (ch05) จะอธิบาย arra-oracle-v3 search engine ที่ขับเคลื่อน ψ Vault ในเชิงเทคนิคลึกขึ้น</p>
         </section>
         <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
-          <a class="button secondary" href="ch02.html">← สถาปัตยกรรม 3 ชั้น</a>
+          <a class="button secondary" href="ch02b.html">← ความเจ็บปวด</a>
           <a class="button primary" href="ch04.html">ติดตั้งจาก 0 →</a>
         </nav>
       </article>

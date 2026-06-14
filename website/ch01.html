@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html" class="active" aria-current="page"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -170,7 +171,43 @@ Co-Authored-By: my-oracle"
 # ไม่ใช่ "Co-Authored-By: Claude Code &lt;...&gt;"
 # ใช้ชื่อ oracle ของคุณเท่านั้น</code></pre>
 
-          <h2 id="section-8">สรุปบทที่ 01</h2>
+          <h2 id="section-8">1.8 ทำไมต้องเป็น Principles ไม่ใช่แค่ Rules</h2>
+          <p>ถ้ามองผิวเผิน เราอาจเขียน rule ยาวๆ ให้ agent ทำตามทีละข้อก็พอ แต่ workflow จริงเปลี่ยนเร็วกว่า rule เสมอ: repo ใหม่มี stack ใหม่, hook ใหม่เพิ่มขึ้น, task ใหม่มี risk ที่ไม่เคยเจอ ถ้ามีแต่รายการคำสั่ง agent จะจำได้บางข้อ ลืมบางข้อ และไม่รู้ว่าจะทำอย่างไรเมื่อสองข้อชนกัน</p>
+          <p>5 Principles ทำหน้าที่เป็น compression layer ของ rule ทั้งหมด แทนที่จะจำรายละเอียดนับร้อยข้อ agent สามารถถาม heuristic ที่ test ได้: action นี้ลบประวัติไหม, มีหลักฐานจาก behavior จริงไหม, มนุษย์ยังเป็นผู้ตัดสินไหม, task นี้เกิดจาก curiosity ของมนุษย์ไหม, และกฎนี้อยู่ใน shared doctrine ที่ทุก form ใช้ร่วมกันไหม เมื่อ principle ชัด rule ใหม่ก็ derive ได้โดยไม่ต้องรอให้มีใครเขียนทุกกรณีล่วงหน้า</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>เมื่อหลักการขัดกัน</th>
+                <th>ตัวอย่างสถานการณ์</th>
+                <th>Resolution ที่ถูกต้อง</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>P1 Nothing is Deleted ปะทะ cleanup</td>
+                <td>มีไฟล์เก่าหรือ worktree zombie ที่ทำให้สับสน</td>
+                <td>ย้ายไป archive หรือ path ชั่วคราวที่ระบุชัด พร้อม commit หรือ note; ไม่ hard-delete ประวัติ</td>
+              </tr>
+              <tr>
+                <td>P2 Patterns Over Intentions ปะทะความเร็ว</td>
+                <td>agent บอกว่า test ผ่านแต่ยังไม่ได้รันจริง</td>
+                <td>เชื่อ output ที่ verify แล้วเท่านั้น; ถ้ายัง verify ไม่ได้ให้รายงานเป็น gap</td>
+              </tr>
+              <tr>
+                <td>P3 External Brain ปะทะ automation</td>
+                <td>ระบบรู้ next action แต่ action นั้นมีผลกับ production หรือ merge authority</td>
+                <td>สะท้อนข้อมูลและเสนอทางเลือก ให้เจ้าของ authority ตัดสินก่อน action ที่ irreversible</td>
+              </tr>
+              <tr>
+                <td>P5 Form and Formless ปะทะ project-specific rule</td>
+                <td>project หนึ่งต้องมีคำสั่ง build พิเศษ</td>
+                <td>เก็บ workflow shared ไว้ global layer และเก็บเฉพาะ project context ไว้ใน project layer</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-9">สรุปบทที่ 01</h2>
           <p>5 Principles ไม่ใช่ motto หรือ tagline แต่เป็น constraint จริงที่ส่งผลต่อทุก command ที่ Oracle รัน ทุก learning ที่เขียนใน ψ Vault และทุกการตัดสินใจเกี่ยวกับ architecture ของระบบ ความเข้าใจ 5 ข้อนี้จะทำให้บทถัดไปมีความหมายมากขึ้น เพราะทุก decision ที่ระบบทำสามารถ trace กลับไปหา principle ใดข้อหนึ่งเสมอ</p>
           <p>Rule 6 เป็น boundary สำคัญที่ทำให้ระบบ trustworthy — ผู้ใช้รู้ว่ากำลังทำงานกับ AI รู้ว่า output ใดมาจาก AI และสามารถ verify ได้ก่อนนำไปใช้ นี่คือรากฐานของความสัมพันธ์ระหว่างมนุษย์กับ Oracle ที่ยั่งยืนได้ในระยะยาว</p>
           <p>บทถัดไปจะลงรายละเอียดของสถาปัตยกรรม 3 ชั้นที่ถูกออกแบบมาให้สอดคล้องกับ principles เหล่านี้ทุกข้อ — โดยเฉพาะ P2 (enforce behavior) และ P3 (human decides at merge gate)</p>
