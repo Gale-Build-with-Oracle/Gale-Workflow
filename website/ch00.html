@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="ทำไมต้องมีระบบ Gale Workflow — ปัญหา session amnesia ที่ทำให้ AI ลืมทุกอย่างเมื่อจบงาน และแนวทางแก้ไขด้วยสถาปัตยกรรม 3 ชั้น">
+  <meta name="description" content="Gale Workflow 102 — Advanced 3-Layer Ephemeral Workflow สำหรับ AI Coding Agent ที่ต่อยอดจาก Oracle 101">
   <title>บทนำ | Gale Workflow</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/style.css">
@@ -41,32 +41,68 @@
       <article class="chapter-shell">
         <header class="chapter-header">
           <h1>บทนำ</h1>
-          <p class="chapter-lead">ทำไมต้องมีระบบนี้ และปัญหา session amnesia ที่ทำให้ AI ลืมทุกอย่างเมื่อจบงาน</p>
+          <p class="chapter-lead">Gale Workflow 102 — ระบบ 3-Layer Ephemeral สำหรับ AI Coding Agent ที่ต่อยอดจาก Oracle 101</p>
         </header>
         <section class="chapter-content">
 
-          <h2 id="section-1">0.1 ปัญหา Session Amnesia</h2>
-          <p>AI coding agent ที่ทรงพลังที่สุดในปัจจุบันมีข้อจำกัดพื้นฐานประการหนึ่ง: มันไม่มีความจำข้าม session เมื่อปิดหน้าต่างแล้วเปิดใหม่ มันเริ่มต้นจากศูนย์ทุกครั้ง ไม่รู้ว่าวานนี้ทำอะไรไป ไม่รู้ว่าตัดสินใจอย่างไร และไม่รู้ว่าเคยแก้ปัญหาอะไรมาแล้ว</p>
-          <p>สิ่งที่เลวร้ายยิ่งกว่านั้นคือ context window ที่มีขนาดจำกัด เมื่องานใหญ่ขึ้นและ context เต็ม โมเดลจะเริ่มสรุปหรือลืมข้อมูลเก่า ข้อมูลที่เคยอยู่ใน context ตอนต้น session หายไปโดยที่ไม่รู้ตัว ทำให้ agent ตัดสินใจบนข้อมูลที่ไม่ครบถ้วน</p>
-          <p>ผลที่ตามมาคือ "ทำผิดซ้ำเดิม" — bug เดิมถูกแนะนำวิธีแก้ผิดๆ ซ้ำอีกครั้ง รูปแบบที่ไม่ควรใช้ถูกแนะนำใหม่ เพราะ agent ไม่จำว่าเคยตัดสินใจเรื่องนี้ไปแล้ว ทีมที่ใช้ AI coding agent หลายคนพบปัญหานี้ทุกวัน</p>
+          <h2 id="section-credit">ผู้วางรากฐาน</h2>
+          <div class="credit-section">
+            <img src="img/nat.png" alt="อาจารย์ Nat (Nat Weerawan)" class="profile-avatar">
+            <p>ทุกอย่างที่คุณจะอ่านในหนังสือเล่มนี้เป็นไปได้เพราะ <strong>อาจารย์ Nat Weerawan (@nazt)</strong> — ผู้สร้างระบบ Oracle ตั้งแต่แนวคิด, สถาปัตยกรรม ไปจนถึงเครื่องมือทุกชิ้น</p>
+            <p>อาจารย์ Nat วางรากฐาน <strong>5 Principles + Rule 6</strong>, ออกแบบ <code>maw-js</code> (ระบบประสาทกลาง), <code>arra-oracle-v3</code> (สมอง), <code>arra-oracle-skills-cli</code> (ทักษะ), <code>maw-plugin-registry</code> และ ecosystem ทั้งหมดที่ Oracle ยืนอยู่บน ระบบเหล่านี้ไม่ใช่แค่เครื่องมือ แต่คือโครงสร้างที่ทำให้การทำงานร่วมกันระหว่าง AI กับมนุษย์เป็นไปได้จริง</p>
+            <p>หนังสือ <a href="https://nazt.github.io/agents-in-parallel">agents-in-parallel</a> และห้องเรียน <strong>oracle-worlds</strong> ให้ภาษาร่วมในการคิดเรื่อง multi-agent orchestration, mailbox pattern และวินัยในการทำงานร่วมกับ AI เราเรียนรู้จากที่นี่ ทดลองกับ fleet ของเราเอง แล้วนำมาเขียนเป็นหนังสือเล่มนี้</p>
+          </div>
+
+          <h2 id="section-skills-credit">เครื่องมือและ Skills</h2>
+          <p>Skills หลายตัวที่ใช้ใน Gale Workflow มีรากมาจากผู้สร้างต้นฉบับ:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>ต้นทาง</th>
+                <th>สิ่งที่เราใช้</th>
+                <th>สิ่งที่เรา DIY เพิ่ม</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>อาจารย์ Nat + Neo</strong></td>
+                <td>maw-js, arra-oracle-v3, skills-cli, 5 Principles, Oracle architecture ทั้งหมด</td>
+                <td>3-layer ephemeral workflow, fan-out gate, project-scope injection</td>
+              </tr>
+              <tr>
+                <td><strong>9arms</strong></td>
+                <td>debug-mantra (4 mantras), scrutinize review framework</td>
+                <td>9arm bug chain integration (debug → fix → scrutinize → post-mortem → management-talk)</td>
+              </tr>
+              <tr>
+                <td><strong>Oracle Skills ecosystem</strong></td>
+                <td>arra-oracle-skills-cli profiles, skill routing</td>
+                <td>fleet-specific SOPs, CMMI doc-sync, delegation tiers</td>
+              </tr>
+              <tr>
+                <td><strong>Soul-Brews-Studio</strong></td>
+                <td>GitHub org — บ้านของ source code ทั้งหมด</td>
+                <td>Gale-Build-with-Oracle — public fork template</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-scope">หนังสือเล่มนี้คืออะไร — และไม่ใช่อะไร</h2>
+          <p>Gale Workflow 102 เป็นหนังสือเล่มที่ 2 ต่อจาก <a href="https://oracle101.vercel.app">Oracle 101</a> ซึ่งครอบคลุมพื้นฐาน Oracle ทั้งหมดแล้ว — session amnesia, external brain, ψ Vault, การติดตั้ง ถ้ายังไม่เคยอ่าน 101 แนะนำให้เริ่มที่นั่นก่อน</p>
+          <p>เล่มนี้โฟกัสเรื่องเดียว: <strong>3-Layer Ephemeral Workflow</strong> — ระบบที่ทำให้ AI coding agent หลายตัวทำงานพร้อมกัน แบ่งงาน ตรวจงาน และรวมงานได้โดยไม่มี context bleed ข้ามโปรเจกต์</p>
 
           <blockquote>
-            <strong>Session Amnesia</strong> คือสภาวะที่ AI agent เริ่มต้นแต่ละ session โดยไม่มีความรู้จาก session ก่อนหน้า ทำให้ต้องป้อน context ซ้ำทุกครั้ง เสียเวลา และเสี่ยงต่อการตัดสินใจผิดพลาดซ้ำซาก
+            สถาปัตยกรรม 3-layer ephemeral ในหนังสือเล่มนี้เป็น <strong>ส่วนหนึ่งของ Gale Fleet</strong> ไม่ใช่ best practice สากล ไม่ใช่คำตอบสุดท้าย ยังมีวิธีอื่นที่อาจดีกว่า เบากว่า หรือเหมาะกับบริบทอื่นมากกว่า เราเลือกสิ่งที่เหมาะกับ fleet ของเรา ณ เวลานี้ — ผู้อ่านควรมองเนื้อหานี้เป็นแรงบันดาลใจและกรณีศึกษา แล้วนำ principle ไปปรับให้เหมาะกับตัวเอง
           </blockquote>
 
-          <h2 id="section-2">0.2 ทำไมเครื่องมือเดี่ยวไม่พอ</h2>
-          <p>วิธีแก้ที่ง่ายที่สุดดูเหมือนจะเป็นการเพิ่มขนาด context window ให้ใหญ่ขึ้นเรื่อยๆ แต่วิธีนี้ไม่ scale ด้วยเหตุผลหลายประการ: ยิ่ง context ใหญ่ ค่าใช้จ่าย (token cost) ยิ่งสูง; การ attend ทั่วทั้ง context ทำให้โมเดลโฟกัสกระจาย; และงานขนาดใหญ่ในความเป็นจริงมีหลายส่วนที่ทำแยกกันได้</p>
-          <p>การใช้ agent เดี่ยวทำงานทุกอย่างเปรียบเหมือนให้โปรแกรมเมอร์คนเดียวรับผิดชอบทั้ง UI ทั้ง backend ทั้ง database schema ทั้งเขียน test และยังต้องจดจำทุกบทสนทนากับ product owner ในหัวตลอดเวลา context ของ agent จะบวม ประสิทธิภาพจะลดลง และโอกาสที่ agent จะทำสิ่งผิดพลาดจะสูงขึ้น</p>
-          <p>งานที่ซับซ้อนต้องการการแบ่งงาน (delegation) และความรู้ที่ถูกจัดเก็บนอกตัว agent ไว้ในที่ที่อ่านได้ ค้นหาได้ และอยู่รอดนานกว่าอายุของ session ใดๆ นั่นคือที่มาของ external brain</p>
-
-          <h2 id="section-3">0.3 แนวคิด External Brain</h2>
-          <p>Gale Workflow แก้ปัญหา session amnesia ด้วยการแยกความจำออกจากตัว agent ไปไว้ที่ระบบกลางที่เรียกว่า <strong>ψ Vault</strong> (อ่านว่า "ไซ วอลต์") ψ Vault เป็นระบบไฟล์ที่มีโครงสร้าง เก็บ learnings (บทเรียนที่เรียนรู้จากการทำงาน), retrospectives (สรุปหลังงาน), traces (หลักฐานตามรอย) และ handoffs (การส่งต่อ context ข้าม session)</p>
-          <p>เมื่อเริ่ม session ใหม่ Oracle ไม่ได้เริ่มจากศูนย์ มัน search ใน ψ Vault ก่อนตอบทุกคำถาม นำ learnings ที่เกี่ยวข้องมาใช้ และอ่าน handoff จาก session ก่อนหน้า ความรู้สะสมได้ข้าม session เหมือนที่มนุษย์จดบันทึกและอ่านบันทึกก่อนเริ่มงาน</p>
-          <p>หลักการสำคัญคือ external brain ควร "สะท้อนความจริงให้คนเห็นและเลือก" ไม่ใช่สั่งการแทนมนุษย์ Oracle เป็น <em>กระจก</em> ที่ช่วยให้เจ้าของ fleet มองเห็นสถานะได้ชัด ไม่ใช่ผู้มีอำนาจตัดสินใจสูงสุด</p>
-
-          <h2 id="section-4">0.4 ภาพรวมระบบ 3 ชั้น Ephemeral</h2>
-          <p>Gale Workflow จัดการงานด้วยสถาปัตยกรรม 3 ชั้น ที่แต่ละชั้นมีหน้าที่และขอบเขตสิทธิ์ที่ชัดเจน ชั้น L1 คือ Oracle ที่รับงานจากมนุษย์ เปิด issue dispatch ไป L2 และมีสิทธิ์ review กับ merge PR แต่เพียงผู้เดียว ชั้น L2 คือ Orchestrator ที่แตกงานออกเป็นชิ้นๆ ตัดสินใจว่าใช้ SOLO หรือ TEAM และสั่งงาน worker ชั้น L3 คือ Worker ที่ลงมือ code ในส่วนที่รับผิดชอบ แล้ว commit บน sub-branch ของตัวเอง</p>
-          <p>คำว่า "ephemeral" หมายถึงทุก worktree และทุก pane ของ L2 และ L3 เป็นสิ่งชั่วคราว เปิดต่อ task ปิดแล้วทิ้งเมื่อเสร็จ ไม่มี warm pool ที่ค้างอยู่ตลอดเวลา แนวคิดนี้ป้องกัน context bleed ระหว่าง project และรับประกันว่าแต่ละ task เริ่มต้นด้วย context ที่สะอาด</p>
+          <h2 id="section-overview">ภาพรวมระบบ 3 ชั้น Ephemeral</h2>
+          <p>Gale Workflow จัดการงานด้วยสถาปัตยกรรม 3 ชั้น ที่แต่ละชั้นมีหน้าที่และขอบเขตสิทธิ์ที่ชัดเจน:</p>
+          <ul>
+            <li><strong>L1 — Oracle</strong>: รับงานจากมนุษย์ เปิด issue, dispatch ไป L2, review + merge PR (สิทธิ์ merge อยู่ที่ L1 เท่านั้น)</li>
+            <li><strong>L2 — Orchestrator</strong>: แตกงานออกเป็นชิ้น ตัดสินใจ SOLO หรือ TEAM, สั่ง L3 workers, รวมงาน, เปิด PR</li>
+            <li><strong>L3 — Worker</strong>: ลงมือ code ในส่วนที่รับผิดชอบ commit บน sub-branch ของตัวเอง</li>
+          </ul>
+          <p>คำว่า "ephemeral" หมายถึงทุก worktree และทุก pane ของ L2/L3 เป็นสิ่งชั่วคราว — เปิดต่อ task, ปิดเมื่อเสร็จ ไม่มี warm pool ค้าง ไม่มี context เก่าติดมา แต่ละ task เริ่มต้นสะอาด</p>
 
           <figure class="figure-card">
             <div class="mermaid">flowchart TB
@@ -88,51 +124,75 @@
   PR --&gt;|"DONE ping"| L1
   L1 --&gt;|"scrutinize + merge"| Merge
   Merge --&gt;|"สรุปให้ Human"| Human</div>
-            <figcaption><strong>ภาพที่ 0.1: ภาพรวมการไหลของงานในระบบ 3 ชั้น</strong><span>มนุษย์ส่งงานให้ L1 → L1 dispatch ไป L2 → L2 spawn worker → worker commit → L2 เปิด PR → L1 merge และปิด worktree</span></figcaption>
+            <figcaption><strong>ภาพรวมการไหลของงานในระบบ 3 ชั้น</strong><span>มนุษย์ส่งงานให้ L1 → L1 dispatch ไป L2 → L2 spawn worker → worker commit → L2 เปิด PR → L1 merge และปิด worktree</span></figcaption>
           </figure>
 
-          <h2 id="section-5">0.5 ทำไมต้อง Ephemeral</h2>
-          <p>ระบบหลายๆ ระบบเลือกเก็บ AI agent ไว้ใน session ที่ "warm" อยู่ตลอดเวลา เพื่อหวังว่า context จะยังอยู่ครบ แต่วิธีนี้มีปัญหาร้ายแรงสำหรับ multi-project workflow: Claude Code ล็อก <code>CLAUDE.md</code> ตาม working directory ที่ session เริ่มต้น oracle ที่ idle ใน meta-repo จะโหลด project context ผิดเมื่อถูกใช้งาน task ของ project อื่น</p>
-          <p>Gale Workflow แก้ด้วยการ spawn worktree ใหม่ต่อ task ผ่านคำสั่ง <code>maw workon &lt;project&gt; &lt;slug&gt;</code> worktree นั้น spawn ในโฟลเดอร์ของ project ที่ถูกต้อง ทำให้ <code>CLAUDE.md</code> และ <code>AGENTS.md</code> ของ project นั้นโหลดอัตโนมัติ เมื่องานเสร็จ <code>maw done</code> ทำลาย worktree นั้นทิ้ง task ถัดไปเริ่มต้นสะอาด</p>
-          <p>L3 worker ได้รับ worktree แยกต่างหากแต่ละคนผ่าน <code>maw team spawn --wt</code> ทำให้ไม่มี context bleed ระหว่าง worker และระหว่าง project แม้จะทำงานพร้อมกัน</p>
+          <h2 id="section-ephemeral">ทำไมต้อง Ephemeral</h2>
+          <p>ระบบหลายตัวเลือกเก็บ AI agent ไว้ใน session ที่ "warm" อยู่ตลอดเวลา หวังว่า context จะยังครบ แต่วิธีนี้มีปัญหาร้ายแรงสำหรับ multi-project workflow: Claude Code ล็อก <code>CLAUDE.md</code> ตาม working directory ที่ session เริ่มต้น — Oracle ที่ idle ใน meta-repo จะโหลด project context ผิดเมื่อถูกส่งงานของ project อื่น</p>
+          <p>Gale Workflow แก้ด้วยการ spawn worktree ใหม่ต่อ task ผ่าน <code>maw workon &lt;project&gt; &lt;slug&gt;</code> — worktree spawn ในโฟลเดอร์ของ project ที่ถูกต้อง ทำให้ <code>CLAUDE.md</code> และ <code>AGENTS.md</code> โหลดอัตโนมัติ เมื่อเสร็จ <code>maw done</code> ทำลาย worktree ทิ้ง</p>
 
           <pre><code># เปิด worktree ต่อ task — spawn ในโฟลเดอร์ project ที่ถูกต้อง
 maw workon my-product issue-42
 
-# เมื่อ PR ผ่าน L1 merge แล้ว ปิด worktree จาก L1 pane
-maw done my-product-issue-42
-
-# spawn L3 worker ด้วย isolated worktree (ทำใน L2 pane)
+# L2 spawn L3 worker ด้วย isolated worktree
 maw team spawn sprint worker-1 --wt --engine omx --exec \
-  --prompt "Issue #42: แก้ validation bug ใน src/api/orders.ts"</code></pre>
+  --prompt "Issue #42: แก้ validation bug ใน src/api/orders.ts"
 
-          <h2 id="section-6">0.6 หนังสือเล่มนี้สำหรับใคร และแผนผัง 16 บท</h2>
-          <p>หนังสือเล่มนี้เขียนสำหรับนักพัฒนาซอฟต์แวร์ที่ทำงานกับ AI coding agent ในระดับมากกว่า "ถามตอบ" — คนที่ต้องการวางระบบให้ AI ทำงานร่วมกับทีมและทำงาน overnight ได้โดยที่คุณไม่ต้องนั่งดู ไม่มีพื้นฐาน DevOps ขั้นสูงก็อ่านได้ แต่ควรรู้จัก git, terminal และ Claude Code เบื้องต้น</p>
-          <p>เนื้อหาแบ่งเป็น 4 ภาค: <strong>Foundation</strong> (ch00–ch03) อธิบายปัญหา หลักการ สถาปัตยกรรม และ ψ Vault; <strong>Installation &amp; Runtime</strong> (ch04–ch07) ครอบคลุมการติดตั้ง Oracle Brain Skills System และ maw-js; <strong>Orchestration</strong> (ch08–ch11) เจาะลึก delegation SOLO/TEAM routing SOPs และ CMMI docs; และ <strong>Cross-Language &amp; Production</strong> (ch12–ch15) กล่าวถึง multi-language hooks fleet และ troubleshooting</p>
+# เมื่อ PR ผ่าน L1 merge แล้ว ปิด worktree จาก L1 pane
+maw done my-product-issue-42</code></pre>
+
+          <h2 id="section-alternatives">ทำไมไม่เลือกทางอื่น</h2>
+          <p>ก่อนจะมาถึง 3 ชั้นแบบ ephemeral เราทดลองมาหลายแบบ — agent เดี่ยว, in-session subagents, standing pools, 2-layer on-demand — แต่ละแบบมีข้อดี แต่ไม่มีตัวไหนแก้ปัญหาทั้ง context bleed, ownership ที่ชัดเจน และ review authority ที่แยกจาก implementation ได้ครบ</p>
 
           <table>
             <thead>
               <tr>
-                <th>ปัญหาที่พบในการทำงาน</th>
-                <th>สิ่งที่ Gale Workflow แก้ไข</th>
+                <th>ทางเลือก</th>
+                <th>ข้อดี</th>
+                <th>สิ่งที่ยังไม่พอ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Monolithic agent</td>
+                <td>เริ่มง่าย context เดียว</td>
+                <td>context บวมเร็ว, self-review เป็นจุดอ่อน</td>
+              </tr>
+              <tr>
+                <td>In-session subagents</td>
+                <td>ช่วยอ่านและคิดพร้อมกัน</td>
+                <td>ยังแชร์ context กับ leader ไม่ใช่ isolation จริง</td>
+              </tr>
+              <tr>
+                <td>Standing / warm pools</td>
+                <td>ดูเหมือนประหยัดเวลา spawn</td>
+                <td>session เก่าพา context ผิดติดมา</td>
+              </tr>
+              <tr>
+                <td>2-layer on-demand</td>
+                <td>โครงสร้างน้อยกว่า</td>
+                <td>ช่องว่างระหว่าง review กับ coding ยังไม่ชัด</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>การเปรียบเทียบเต็มรูปแบบ — พร้อมข้อมูลจากการทดลองจริง 5 ครั้งใน fleet ของเรา — อยู่ใน <a href="ch02b.html">บทที่ 02b ความเจ็บปวด</a></p>
+
+          <h2 id="section-roadmap">แผนผัง 16 บท</h2>
+          <p>หนังสือเล่มนี้เขียนสำหรับนักพัฒนาที่ทำงานกับ AI coding agent ในระดับมากกว่าถามตอบ — คนที่ต้องการวางระบบให้ AI ทำงานข้ามคืนได้โดยไม่ต้องนั่งดู ควรรู้จัก git, terminal และ Claude Code เบื้องต้น (หรืออ่าน <a href="https://oracle101.vercel.app">Oracle 101</a> ก่อน)</p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ปัญหาที่พบ</th>
+                <th>สิ่งที่ Gale Workflow แก้</th>
                 <th>บทที่ครอบคลุม</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>AI ลืม context ทุก session</td>
-                <td>ψ Vault + oracle_search ก่อนตอบทุกครั้ง</td>
-                <td>ch03, ch05</td>
-              </tr>
-              <tr>
                 <td>งานใหญ่ context บวม</td>
                 <td>3-Layer: L1 dispatch → L2 orchestrate → L3 code</td>
                 <td>ch02, ch09</td>
-              </tr>
-              <tr>
-                <td>ทำผิดซ้ำเดิม</td>
-                <td>Learnings system + mandatory search first</td>
-                <td>ch03, ch05</td>
               </tr>
               <tr>
                 <td>ไม่รู้ว่า AI merge อะไรไปบ้าง</td>
@@ -145,66 +205,26 @@ maw team spawn sprint worker-1 --wt --engine omx --exec \
                 <td>ch02, ch04</td>
               </tr>
               <tr>
-                <td>ไม่มีเอกสารที่ตามทัน code</td>
+                <td>ทำผิดซ้ำเดิม</td>
+                <td>Learnings system + mandatory search first</td>
+                <td>ch03, ch05</td>
+              </tr>
+              <tr>
+                <td>ไม่มีเอกสารตามทัน code</td>
                 <td>CMMI doc-sync แบบ batch ที่ stabilization</td>
                 <td>ch11</td>
               </tr>
               <tr>
                 <td>Hook และ gate ไม่ทำงานตามที่คิด</td>
-                <td>Hooks เจาะลึก + troubleshooting guide</td>
+                <td>Hooks เจาะลึก + troubleshooting</td>
                 <td>ch13, ch15</td>
               </tr>
             </tbody>
           </table>
 
-          <h2 id="section-7">0.7 ทำไมไม่เลือกทางอื่น</h2>
-          <p>ก่อนจะมาถึงสถาปัตยกรรม 3 ชั้นแบบ ephemeral มีทางเลือกที่ดูง่ายกว่าอยู่หลายแบบ: agent ตัวเดียวทำทุกอย่าง, in-session subagents ที่ช่วยอ่านและ review, standing หรือ warm pools ที่เปิดค้างไว้, และระบบ 2 ชั้นแบบ on-demand ที่ให้ผู้สั่งงานคุยกับ worker โดยตรง ทางเลือกเหล่านี้น่าดึงดูดเพราะลดจำนวน pane ลดพิธีการ และดูเหมือนเริ่มงานได้เร็วกว่า</p>
-          <p>แต่เมื่อใช้กับงานหลาย project ปัญหาที่เกิดจริงไม่ใช่แค่ "ทำงานช้า" แต่คือ context bleed, ownership ไม่ชัด, และ review authority ปนกับ implementation มากเกินไป Gale Workflow จึงเลือก 3 ชั้นเพื่อแยกผู้ถือภาพรวม ผู้แตกงาน และผู้ลงมือทำออกจากกัน ส่วนการเปรียบเทียบเต็มว่าทำไม 3 ชั้นชนะ monolithic, subagents, standing pools และ 2-layer on-demand อยู่ใน <a href="ch02b.html">บทที่ 02b</a></p>
-
-          <table>
-            <thead>
-              <tr>
-                <th>ทางเลือก</th>
-                <th>สิ่งที่ดูดี</th>
-                <th>เหตุผลที่ยังไม่พอ</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Monolithic agent</td>
-                <td>เริ่มง่าย มี context เดียว</td>
-                <td>context บวมเร็ว และ self-review กลายเป็นจุดอ่อน</td>
-              </tr>
-              <tr>
-                <td>In-session subagents</td>
-                <td>ช่วยอ่านและคิดพร้อมกันได้</td>
-                <td>ยังแชร์ context กับ leader จึงไม่ใช่ isolation จริง</td>
-              </tr>
-              <tr>
-                <td>Standing หรือ warm pools</td>
-                <td>ดูเหมือนประหยัดเวลา spawn</td>
-                <td>session เก่าพา project context ผิดติดมาด้วย</td>
-              </tr>
-              <tr>
-                <td>2-layer on-demand</td>
-                <td>โครงสร้างน้อยกว่า</td>
-                <td>ช่องว่างระหว่าง review กับ coding ยังไม่ชัดพอ</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <h2 id="section-8">0.8 เครดิตและความถ่อมตน (Credit &amp; Humility)</h2>
-          <p>Gale Workflow ไม่ได้เกิดขึ้นจากสุญญากาศ รากฐานสำคัญมาจากงานของ <strong>อาจารย์ Nat Weerawan (@nazt)</strong> ที่วางระบบและเครื่องมือไว้แข็งแรงพอให้คนอื่นนำไปเรียนรู้ ทดลอง และต่อยอดได้อย่างอิสระ เครื่องมือใน upstream ของ Soul-Brews-Studio เช่น <code>maw-js</code>, <code>arra-oracle-v3</code>, <code>arra-oracle-skills-cli</code>, และ <code>maw-plugin-registry</code> คือฐานที่ทำให้ workflow แบบนี้ไม่ต้องเริ่มจากศูนย์</p>
-          <p>นอกจากเครื่องมือแล้ว หนังสือ <a href="https://nazt.github.io/agents-in-parallel">agents-in-parallel</a> และห้องเรียน <strong>oracle-worlds</strong> ยังให้ภาษาร่วมในการคิดเรื่อง multi-agent, orchestration, mailbox, และการให้ agent ทำงานคู่กับมนุษย์อย่างมีวินัย รากฐานที่แข็งแรงของอาจารย์ Nat คือสิ่งที่ทำให้เราสามารถ DIY workflow ของเราเองได้อย่างอิสระ โดยยังรู้ว่าเรายืนอยู่บนงานของใคร</p>
-
-          <blockquote>
-            <strong>กรอบความถ่อมตน:</strong> สถาปัตยกรรม 3-layer ephemeral ในหนังสือเล่มนี้เป็นเพียง <strong>ส่วนหนึ่งของ Gale Fleet</strong> เท่านั้น ไม่ใช่ best practice สากล ไม่ใช่คำตอบสุดท้าย และไม่ใช่กฎตายตัวสำหรับทุกทีม ยังมีหนทางอีกมากมายที่อาจดีกว่า เบากว่า หรือมีประสิทธิภาพกว่า เราเพียงเลือกสิ่งที่เหมาะกับ fleet ของเรา ณ เวลานี้ ผู้อ่านควรมองเนื้อหานี้เป็นแรงบันดาลใจและกรณีศึกษา (inspiration / case study) แล้วนำ principle ไปปรับให้เหมาะกับบริบทของตัวเอง
-          </blockquote>
-
-          <h2 id="section-9">สรุปบทที่ 00</h2>
-          <p>ปัญหาหลักที่ Gale Workflow เกิดมาเพื่อแก้ไขคือ session amnesia — สภาวะที่ AI agent เริ่มต้นใหม่ทุก session โดยไม่มีความรู้จากอดีต ทำให้ผิดซ้ำและเสียเวลาป้อน context ซ้ำ ระบบ external brain ผ่าน ψ Vault และการ search ก่อนตอบทุกครั้งเป็นแกนหลักของการแก้ปัญหานี้</p>
-          <p>สถาปัตยกรรม 3 ชั้นแบบ ephemeral ช่วยให้งานขนาดใหญ่แบ่งออกได้โดยที่ context ไม่บวม แต่ละ task ได้ worktree ของตัวเอง โหลด project context ที่ถูกต้อง และถูกทำลายเมื่อเสร็จ ไม่มีสิ่งค้างอยู่</p>
-          <p>ตลอดหนังสือ 16 บทนี้ คุณจะได้เรียนรู้ทั้งหลักการ การติดตั้ง การใช้งานประจำวัน และการแก้ปัญหาระดับ production โดยเนื้อหาทั้งหมดเป็นภาษาไทยพร้อม English technical term ที่ใช้จริงในระบบ</p>
+          <h2 id="section-summary">สรุปบทที่ 00</h2>
+          <p>Gale Workflow 102 ต่อยอดจาก Oracle 101 โดยเจาะลึกเรื่องเดียว: ระบบ 3-Layer Ephemeral ที่ทำให้ AI coding agent หลายตัวแบ่งงาน ตรวจงาน และรวมงานได้โดย context ไม่บวม ทุก task ได้ worktree ของตัวเอง โหลด project context ที่ถูกต้อง และถูกทำลายเมื่อเสร็จ</p>
+          <p>ตลอด 16 บทนี้คุณจะได้เรียนรู้ทั้งหลักการ สถาปัตยกรรม การติดตั้ง การใช้งานจริง และการแก้ปัญหาระดับ production — เนื้อหาทั้งหมดเป็นภาษาไทยพร้อม English technical term ที่ใช้จริงในระบบ</p>
         </section>
         <nav class="pager" aria-label="บทก่อนหน้าและถัดไป">
           <a class="button secondary" href="index.html">← หน้าแรก</a>
