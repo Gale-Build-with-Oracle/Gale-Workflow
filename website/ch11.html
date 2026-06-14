@@ -126,8 +126,8 @@ bash ~/ghq/github.com/&lt;your-github-user&gt;/Gale-Framework/scripts/init-proje
           <ul>
             <li><code>SRS.md</code>: <code>REQ-PROJ-042: ระบบต้องรองรับ rate limiting 100 requests/minute ต่อ user</code></li>
             <li><code>src/auth/rateLimiter.ts</code>: implement rate limiting logic</li>
-            <li><code>PR #35 description</code>: <code>REQ: REQ-PROJ-042</code> และ <code>Closes #30</code></li>
-            <li><code>UAT.md</code>: row สำหรับ REQ-PROJ-042 ที่มี test case, วันที่ test, ผลลัพธ์ และ PR SHA #35</li>
+            <li><code>PR No.35 description</code>: <code>REQ: REQ-PROJ-042</code> และ <code>Closes No.30</code></li>
+            <li><code>UAT.md</code>: row สำหรับ REQ-PROJ-042 ที่มี test case, วันที่ test, ผลลัพธ์ และ PR SHA No.35</li>
           </ul>
           <p>เมื่อมี audit หรือต้องการรู้ว่า REQ ไหนถูก implement ใน PR ไหน ค้นหาแค่ REQ-id ในไฟล์ 4 แหล่งนี้ ไม่ต้องมีเอกสารพิเศษเพิ่มเติม</p>
 
@@ -135,8 +135,8 @@ bash ~/ghq/github.com/&lt;your-github-user&gt;/Gale-Framework/scripts/init-proje
             <div class="mermaid">flowchart LR
   REQ["SRS.md\nREQ-PROJ-042"]
   CODE["code\nrateLimiter.ts"]
-  PR["PR #35\nREQ: REQ-PROJ-042\nCloses #30"]
-  UAT["UAT.md\nREQ-PROJ-042 row\nPR SHA #35"]
+  PR["PR No.35\nREQ: REQ-PROJ-042\nCloses No.30"]
+  UAT["UAT.md\nREQ-PROJ-042 row\nPR SHA No.35"]
 
   REQ --&gt; CODE
   CODE --&gt; PR
@@ -162,7 +162,7 @@ bash ~/ghq/github.com/&lt;your-github-user&gt;/Gale-Framework/scripts/init-proje
 - เขียน unit test ครอบคลุม edge cases
 
 REQ: REQ-PROJ-042
-Closes #30
+Closes No.30
 
 ## Test Plan
 - [x] unit test: rate limiter logic (15 cases)
