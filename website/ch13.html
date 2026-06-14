@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -301,7 +302,13 @@ fi
 
 exit 0</code></pre>
 
-          <h2 id="section-8">สรุปบทที่ 13</h2>
+          <h2 id="section-8">13.8 TEAM Gate ภายในและการตรวจ oracle repo</h2>
+          <p>TEAM Gate สำคัญเพราะมันย้าย fan-out rule จากคำแนะนำใน brief ไปเป็นการบังคับที่จุด edit จริง <code>pre-guard</code> อ่าน <code>.maw/strategy.json</code> ถ้า <code>route</code> เป็น <code>TEAM</code> แต่ไม่พบ worker pane ที่ทำงานใน worktree เดียวกัน hook จะ <code>exit 2</code> และบล็อกการแก้ไฟล์ทันที นี่คือชั้นที่กัน anti-pattern แบบงานใหญ่แต่ทำคนเดียว</p>
+          <p>การตรวจว่า “ไม่มี worker” ไม่ได้เดาจากคำพูดของ agent แต่ใช้สภาพ runtime จริง: hook scan pane ด้วยคำสั่งแนว <code>tmux list-panes</code> แล้วเทียบ current working directory ของ pane เหล่านั้นกับ worktree เป้าหมาย ถ้าไม่มี worker ที่อยู่ใน scope เดียวกัน แปลว่า route=TEAM ยังไม่ถูก execute</p>
+          <p>มี escape hatch สำหรับกรณี refactor ที่ใหญ่แต่ tightly-coupled และทำคนเดียวปลอดภัยกว่า: สร้าง <code>.maw/solo-justified</code> พร้อมเหตุผลก่อน edit การ override นี้ทำให้ข้อยกเว้นมีร่องรอย ไม่ใช่การ bypass เงียบ ๆ</p>
+          <p><code>prompt-inject</code> รู้ว่า repo เป็น oracle repo โดยดู git root ว่ามีทั้ง <code>CLAUDE.md</code> และ directory <code>ψ/</code> อยู่ด้วยกัน สองสัญญาณนี้บอกว่า session ต้องรับ identity และ memory context ของ oracle ไม่ใช่โปรเจกต์ทั่วไป</p>
+
+          <h2 id="section-9">13.9 สรุปบทที่ 13</h2>
           <p>
             Hooks คือ backbone ของ automation ใน Gale Workflow
             พวกมันทำงานที่ระดับ harness ไม่ใช่ระดับโมเดล ทำให้เป็น hard constraint ที่ bypass ไม่ได้
