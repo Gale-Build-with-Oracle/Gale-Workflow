@@ -19,6 +19,7 @@
         <a href="ch00.html"><span>CH 00</span>บทนำ</a>
         <a href="ch01.html"><span>CH 01</span>5 Principles</a>
         <a href="ch02.html"><span>CH 02</span>สถาปัตยกรรม 3 ชั้น</a>
+        <a href="ch02b.html"><span>CH 02b</span>ความเจ็บปวด</a>
         <a href="ch03.html"><span>CH 03</span>ψ Vault</a>
         <a href="ch04.html"><span>CH 04</span>ติดตั้งจาก 0</a>
         <a href="ch05.html"><span>CH 05</span>Oracle Brain</a>
@@ -62,7 +63,7 @@
   Q1 --&gt;|ใช่ทุกข้อ| SOLO[SOLO route]
   Q1 --&gt;|ไม่ หรือไม่แน่ใจ| TEAM[TEAM route]
   SOLO --&gt; S1[workon pane code ตรง]
-  S1 --&gt; S2[1 PR: Closes #N]
+  S1 --&gt; S2[1 PR: Closes Issue No.N]
   S2 --&gt; S3[DONE-ping ถึง L1]
   TEAM --&gt; T1[spawn OMX workers]
   T1 --&gt; T2[1 issue ต่อ worker]
@@ -292,7 +293,41 @@ maw panes
 
           <p>สำหรับงานที่มีมากกว่า 4 issues การทำเป็น sequential batch ผ่าน L2 เดิม: ทำ batch 1 (4 issues) → shutdown → ทำ batch 2 → shutdown → รวม PRs ก่อน DONE-ping ถ้า issues อิสระต่อกัน อาจเปิด Parallel L2s แต่ยัง limit 4 workers ต่อ L2</p>
 
-          <h2 id="section-8">9.8 สรุปบทที่ 09</h2>
+          <h2 id="section-8">9.8 ทำไม threshold นี้ และ git พังอย่างไรเมื่อไฟล์ทับกัน</h2>
+
+          <p>
+            เกณฑ์ "1-2 ไฟล์ / 30 นาที / ไม่ต้อง research" เป็นเส้นที่มาจากต้นทุนจริงของ coordination
+            การ spawn worktree, brief worker, monitor, aggregate, test, และ review มีค่า overhead เสมอ ถ้างานเล็กกว่านั้น SOLO เร็วและปลอดภัยกว่า
+            แต่ทันทีที่ต้องอ่านหลายไฟล์หรือไม่แน่ใจ root cause ค่า overhead ของ TEAM จะคุ้ม เพราะ parallelism ลด blind spot ได้มากกว่าเวลาที่เสียไปกับ coordination
+          </p>
+          <p>
+            กฎ disjoint-file ของ parallel L2s มาจาก failure mode ของ git โดยตรง ไม่ใช่ความชอบส่วนตัว ถ้า L2-A และ L2-B แตะไฟล์เดียวกันพร้อมกัน
+            PR แรก merge ได้ แต่ PR ที่สองจะ rebase แล้ว conflict ในไฟล์เดียวกัน L1 ซึ่งไม่ได้เป็นคนเขียนทั้งสอง diff ต้องตัดสินใจมือว่า intent ไหนควรอยู่
+            นั่นคือการย้ายภาระจาก worker กลับมาที่ reviewer และทำให้ merge gate กลายเป็น manual surgery
+          </p>
+
+          <blockquote>
+            <strong>ก่อน:</strong> issue A และ issue B แตะ <code>src/routes.ts</code> พร้อมกัน → PR ใบที่สอง conflict หลัง merge ใบแรก<br>
+            <strong>หลัง:</strong> L1 รวมสอง issue เข้าหนึ่ง TEAM batch หรือทำ sequential L2 → conflict ถูกแก้โดย owner ที่เห็นบริบททั้งชุด
+          </blockquote>
+
+          <table>
+            <thead>
+              <tr>
+                <th>สัญญาณ</th>
+                <th>ผลต่อ routing</th>
+                <th>เหตุผล</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1 ไฟล์, stack trace ชัด, ไม่ต้อง test ใหม่</td><td>SOLO</td><td>coordination overhead สูงกว่าประโยชน์</td></tr>
+              <tr><td>3 ไฟล์, ต้องไล่ call path</td><td>TEAM</td><td>research lane และ implementation lane แยกกันได้</td></tr>
+              <tr><td>หลาย issues แตะไฟล์เดียวกัน</td><td>TEAM เดียวหรือ sequential</td><td>ป้องกัน merge conflict ที่ L1 ต้องแก้มือ</td></tr>
+              <tr><td>หลาย issues คนละ module</td><td>parallel L2s ได้</td><td>git boundary แยกพอให้ merge serial ปลอดภัย</td></tr>
+            </tbody>
+          </table>
+
+          <h2 id="section-9">9.9 สรุปบทที่ 09</h2>
           <p>SOLO vs TEAM routing เป็นการตัดสินใจที่ง่ายที่สุดในทั้ง workflow — คำถามเดียว, คำตอบสองทาง, ไม่มีระดับกลาง ความสำคัญอยู่ที่การยอมรับว่า TEAM คือ default ที่ปลอดภัย ไม่ใช่สิ่งที่ต้องหลีกเลี่ยง</p>
           <p>strategy.json gate ทำให้การตัดสินใจมีน้ำหนัก — ไม่ใช่แค่ convention แต่มี machine enforcement ปิดกั้นการเลื่อนขอบเขตโดยไม่ตั้งใจ Escalation guard ป้องกัน SOLO ที่โตเกิน threshold และ parallel L2s ให้ flexibility สำหรับ independent issues</p>
           <p>บทถัดไปจะครอบคลุม SOPs และ Merge Gate — ระบบ SOP ที่โหลดก่อนงาน, sequence การทำงานจนถึง DONE-ping, และกลไก on-stop crash safety ที่รับรองว่า L1 ไม่มีทางพลาด PR แม้ L2 จะ crash กลางคัน</p>
