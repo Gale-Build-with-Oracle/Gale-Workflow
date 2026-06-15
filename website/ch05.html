@@ -238,14 +238,14 @@ curl -s -X POST http://localhost:47778/api/search \
 
           <figure class="figure-card">
             <div class="mermaid">flowchart TB
-              Q([Query จาก Agent]) --&gt; FTS[FTS5 keyword search\nSQLite]
-              Q --&gt; EMB[Embed query\nbge-m3 model]
-              EMB --&gt; VEC[Vector similarity search\nsqlite-vec]
-              FTS --&gt; RRF[RRF Merge\nReciprocal Rank Fusion]
-              VEC --&gt; RRF
-              RRF --&gt; RES([Results พร้อม score])
-              VEC -. ถ้า vector offline .--&gt; FALL[Fallback: FTS only\n+ warning ใน response]
-              FALL --&gt; RES</div>
+  Q(["Query จาก Agent"]) --> FTS["FTS5 keyword search&lt;br/&gt;SQLite"]
+  Q --> EMB["Embed query&lt;br/&gt;bge-m3 model"]
+  EMB --> VEC["Vector similarity search&lt;br/&gt;sqlite-vec"]
+  FTS --> RRF["RRF Merge&lt;br/&gt;Reciprocal Rank Fusion"]
+  VEC --> RRF
+  RRF --> RES(["Results พร้อม score"])
+  VEC -. "ถ้า vector offline" .-> FALL["Fallback FTS only&lt;br/&gt;+ warning"]
+  FALL --> RES</div>
             <figcaption><strong>ภาพที่ 5.1: Hybrid Search Flow ใน arra-oracle-v3</strong><span>FTS5 + vector semantic merge ด้วย RRF; fallback อัตโนมัติเมื่อ vector ล้ม</span></figcaption>
           </figure>
 
